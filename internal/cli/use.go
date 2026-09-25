@@ -12,24 +12,27 @@ import (
 	"github.com/crosery/crapi/internal/ui"
 )
 
-const useHelp = `crapi use [model-id] [参数]
+const useHelp = `crapi use [harness] [model-id] [参数]
 
-快速切换已接入 agent harness 的默认模型。不带 model-id 时进入交互式选择菜单。
+快速查看与切换已接入 agent harness 的默认模型。
+不带参数时进入交互式界面：先浏览各工具当前使用的默认模型，选择目标工具后快速切换。
 
 别名：crapi switch, crapi set-model
 
 示例：
-  crapi use                       交互式选择模型并切换
-  crapi use claude-opus-5-5       一键把全部已接入工具切换为 claude-opus-5-5
-  crapi use gpt-5.6-sol --harness codex   仅切换 codex 的默认模型
+  crapi use                               进入交互式选择菜单（先选工具看当前模型，再选新模型）
+  crapi use claude                        为 Claude Code 交互式选择并切换模型
+  crapi use claude claude-opus-5-5        直接把 Claude Code 切换为 claude-opus-5-5
+  crapi use claude-opus-5-5               一键把全部已接入的工具统一切换为 claude-opus-5-5
+  crapi use codex gpt-5.6-sol             直接把 OpenAI Codex 切换为 gpt-5.6-sol
 
 参数：
-  --harness <id>  只切换指定的 harness（如 claude、codex、opencode 等），默认切换全部已接入工具
+  --harness <id>  指定要切换的目标 harness（也可作为第一个位置参数直接传入）
   --dry-run       仅预览变更，不实际修改配置文件`
 
 func cmdUse(a *App, args []string) error {
 	fs := newFlags("use", useHelp)
-	targetHarness := fs.String("harness", "", "")
+	harnessFlag := fs.String("harness", "", "")
 	dry := fs.Bool("dry-run", false, "")
 	positional, err := parse(fs, args, useHelp)
 	if err != nil {
@@ -53,74 +56,56 @@ func cmdUse(a *App, args []string) error {
 
 	env := harness.DefaultEnv()
 
-	// 确定目标 harness 列表
-	var targets []harness.Harness
-	if *targetHarness != "" {
-		h, ok := harness.Get(*targetHarness)
-		if !ok {
-			return fmt.Errorf("不认识的 harness 标识：%s（可用 crapi status 查看支持列表）", *targetHarness)
-		}
-		targets = []harness.Harness{h}
-	} else if len(positional) == 0 && term.Interactive() {
-		// 交互模式下：询问是切换所有工具，还是切换指定工具
-		var configured []harness.Harness
+	// 找出本机所有已接入或已配置的 harness
+	getConfigured := func() []harness.Harness {
+		var list []harness.Harness
 		for _, h := range harness.All() {
 			_, managed := a.Cfg.Managed[h.ID()]
 			det := h.Detect(env)
 			if managed || (det.Installed && h.Status(env, a.Cfg.Base()).Configured) {
-				configured = append(configured, h)
+				list = append(list, h)
 			}
 		}
-		if len(configured) == 0 {
-			ui.Warn("未检测到已接入 crosery 的 agent harness，请先运行 crapi setup 完成初次配置。")
-			return nil
-		}
-
-		scopeOpts := []ui.Option{
-			{Label: fmt.Sprintf("全部已接入的 agent harness（共 %d 个）", len(configured)), Value: "all"},
-		}
-		for _, h := range configured {
-			st := h.Status(env, a.Cfg.Base())
-			modelHint := ""
-			if st.Model != "" {
-				modelHint = " [当前: " + st.Model + "]"
-			}
-			scopeOpts = append(scopeOpts, ui.Option{
-				Label: ui.Pad(h.Name(), 18) + ui.Dim.Render(modelHint),
-				Value: h.ID(),
-			})
-		}
-
-		ui.Println()
-		scopeChoice, err := ui.AskSelect("请选择切换范围：", "all", scopeOpts)
-		if err != nil {
-			return err
-		}
-
-		if scopeChoice == "all" {
-			targets = configured
-		} else {
-			h, _ := harness.Get(scopeChoice)
-			targets = []harness.Harness{h}
-		}
-	} else {
-		for _, h := range harness.All() {
-			_, managed := a.Cfg.Managed[h.ID()]
-			det := h.Detect(env)
-			if managed || (det.Installed && h.Status(env, a.Cfg.Base()).Configured) {
-				targets = append(targets, h)
-			}
-		}
+		return list
 	}
 
-	if len(targets) == 0 {
-		ui.Warn("未检测到已接入 crosery 的 agent harness，请先运行 crapi setup 完成初次配置。")
+	configured := getConfigured()
+	if len(configured) == 0 {
+		ui.Warn("未检测到已接入 crosery 的 agent harness，请先运行 crapi setup 或 crapi reload。")
 		return nil
 	}
 
+	// 解析命令行参数：支持 crapi use <harness> <model> 或 crapi use <model>
+	var targetHarness harness.Harness
 	targetModel := ""
-	if len(positional) > 0 {
-		targetModel = strings.TrimSpace(positional[0])
+
+	if *harnessFlag != "" {
+		h, ok := harness.Get(*harnessFlag)
+		if !ok {
+			return fmt.Errorf("不认识的 harness 标识：%s（可用 crapi status 查看）", *harnessFlag)
+		}
+		targetHarness = h
+	}
+
+	if len(positional) >= 2 {
+		// crapi use <harness> <model>
+		h, ok := harness.Get(positional[0])
+		if !ok {
+			return fmt.Errorf("不认识的 harness 标识：%s", positional[0])
+		}
+		targetHarness = h
+		targetModel = positional[1]
+	} else if len(positional) == 1 {
+		// 可能是 harness 也可能是 model
+		if h, ok := harness.Get(positional[0]); ok {
+			targetHarness = h
+		} else {
+			targetModel = positional[0]
+		}
+	}
+
+	// 如果指定了具体 model，先校验有效性
+	if targetModel != "" {
 		if _, ok := api.Find(chat, targetModel); !ok {
 			ui.Warn("模型 %s 不在当前 Key 的可用列表中。", ui.Bold.Render(targetModel))
 			var similar []string
@@ -134,42 +119,123 @@ func cmdUse(a *App, args []string) error {
 			}
 			return fmt.Errorf("无效的模型标识：%s", targetModel)
 		}
-	} else {
-		if !term.Interactive() {
-			return errors.New("请指定要切换的模型名称，例如：crapi use claude-opus-5-5")
+	}
+
+	// 非交互模式必须有确定的 model
+	if !term.Interactive() && targetModel == "" {
+		return errors.New("缺少目标模型名称，例如：crapi use claude-opus-5-5")
+	}
+
+	// 交互式循环（支持连续切换与查看）
+	for {
+		var selectedHarnesses []harness.Harness
+		currentModelOfTarget := ""
+
+		if targetHarness != nil {
+			selectedHarnesses = []harness.Harness{targetHarness}
+			currentModelOfTarget = targetHarness.Status(env, a.Cfg.Base()).Model
+		} else if targetModel == "" {
+			// 第一步：先展示每个 harness 当前使用的模型，供用户选择
+			configured = getConfigured()
+			var scopeOpts []ui.Option
+			scopeOpts = append(scopeOpts, ui.Option{
+				Label: ui.Pad("【全部已接入工具】", 20) + ui.Dim.Render(fmt.Sprintf("统一切换全部 %d 个工具的默认模型", len(configured))),
+				Value: "ALL",
+			})
+
+			for _, h := range configured {
+				st := h.Status(env, a.Cfg.Base())
+				modelDisplay := "未设置"
+				if st.Model != "" {
+					modelDisplay = st.Model
+				}
+				label := ui.Pad(h.Name(), 18) + "  " + ui.Dim.Render("当前: ") + ui.AccentS.Render(modelDisplay)
+				scopeOpts = append(scopeOpts, ui.Option{
+					Label: label,
+					Value: h.ID(),
+				})
+			}
+
+			ui.Println()
+			pickHarness, err := ui.AskSelect("请选择要查看与切换模型的 Agent Harness：", "ALL", scopeOpts)
+			if err != nil {
+				return err
+			}
+
+			if pickHarness == "ALL" {
+				selectedHarnesses = configured
+			} else {
+				h, _ := harness.Get(pickHarness)
+				selectedHarnesses = []harness.Harness{h}
+				currentModelOfTarget = h.Status(env, a.Cfg.Base()).Model
+			}
+		} else {
+			selectedHarnesses = configured
 		}
-		targetModel, err = promptSelectModel(chat)
-		if err != nil {
-			return err
+
+		// 第二步：选择目标模型
+		chosenModel := targetModel
+		if chosenModel == "" {
+			var err error
+			hName := "全部工具"
+			if len(selectedHarnesses) == 1 {
+				hName = selectedHarnesses[0].Name()
+			}
+			chosenModel, err = promptSelectModelForHarness(hName, currentModelOfTarget, chat)
+			if err != nil {
+				return err
+			}
+		}
+
+		// 第三步：执行配置写入
+		ui.Println()
+		ui.Section("切换默认模型", fmt.Sprintf("目标：%s · 影响 %d 个工具", ui.AccentS.Render(chosenModel), len(selectedHarnesses)))
+		plan := harness.Plan{
+			BaseURL:    a.Cfg.Base(),
+			Key:        c.Key,
+			Models:     chat,
+			Model:      chosenModel,
+			WebSearch:  false,
+			UpdateOnly: false,
+		}
+
+		ok, _ := applyAll(a, env, plan, selectedHarnesses, *dry)
+		if !*dry {
+			if len(selectedHarnesses) > 1 {
+				a.Cfg.DefaultModel = chosenModel
+			}
+			if err := a.Cfg.Save(); err != nil {
+				return err
+			}
+		}
+
+		ui.Println()
+		ui.Success("默认模型已切换为 %s（已更新 %d / %d 个工具配置）。",
+			ui.AccentS.Render(chosenModel), ok, len(selectedHarnesses))
+
+		// 如果是通过命令行带参运行的，执行一次后退出
+		if len(positional) > 0 || *harnessFlag != "" || !term.Interactive() {
+			return nil
+		}
+
+		// 交互模式下询问是否继续
+		targetHarness = nil
+		targetModel = ""
+		continueChoice, err := ui.AskSelect("还要切换其他 Agent Harness 吗？", "no", []ui.Option{
+			{Label: "继续切换其他 harness", Value: "yes"},
+			{Label: "完成并退出", Value: "no"},
+		})
+		if err != nil || continueChoice != "yes" {
+			break
 		}
 	}
 
-	ui.Section("切换默认模型", fmt.Sprintf("目标模型：%s · 影响 %d 个工具", ui.AccentS.Render(targetModel), len(targets)))
-	plan := harness.Plan{
-		BaseURL:    a.Cfg.Base(),
-		Key:        c.Key,
-		Models:     chat,
-		Model:      targetModel,
-		WebSearch:  false,
-		UpdateOnly: false,
-	}
-
-	ok, _ := applyAll(a, env, plan, targets, *dry)
-	if !*dry {
-		if err := a.Cfg.Save(); err != nil {
-			return err
-		}
-	}
-
-	ui.Println()
-	ui.Success("默认模型已切换为 %s（已更新 %d / %d 个工具配置）。",
-		ui.AccentS.Render(targetModel), ok, len(targets))
 	return nil
 }
 
-// promptSelectModel 呈现分层/常用模型的交互式选择框。
-func promptSelectModel(chat []api.Model) (string, error) {
-	// 常用主流模型按推荐顺序置顶
+// promptSelectModelForHarness 呈现带有当前模型标记的交互式选择菜单。
+func promptSelectModelForHarness(harnessName, currentModel string, chat []api.Model) (string, error) {
+	// 常用主流模型置顶推荐
 	recommended := []string{
 		"claude-opus-5-5",
 		"claude-sonnet-5",
@@ -189,19 +255,36 @@ func promptSelectModel(chat []api.Model) (string, error) {
 	}
 
 	var opts []ui.Option
-	// 1. 优先放入推荐且当前 Key 拥有的模型
-	for _, id := range recommended {
-		if m, ok := api.Find(chat, id); ok {
-			ctxStr := ""
-			if m.ContextLength > 0 {
-				ctxStr = fmt.Sprintf(" (%s ctx)", ui.Ctx(m.ContextLength))
-			}
-			label := ui.Pad(m.ID, 28) + " " + ui.Dim.Render(m.OwnedBy+ctxStr)
-			opts = append(opts, ui.Option{Label: label, Value: m.ID})
+
+	formatOpt := func(m api.Model) ui.Option {
+		ctxStr := ""
+		if m.ContextLength > 0 {
+			ctxStr = fmt.Sprintf(" (%s ctx)", ui.Ctx(m.ContextLength))
+		}
+		statusTag := ""
+		if currentModel != "" && m.ID == currentModel {
+			statusTag = " " + ui.OKS.Render("[当前使用]")
+		}
+		label := ui.Pad(m.ID, 28) + " " + ui.Dim.Render(m.OwnedBy+ctxStr) + statusTag
+		return ui.Option{Label: label, Value: m.ID}
+	}
+
+	// 1. 如果当前正在使用的模型不在推荐列表中，且属于可用模型，优先放到最前面
+	if currentModel != "" && !recSet[currentModel] {
+		if m, ok := api.Find(chat, currentModel); ok {
+			opts = append(opts, formatOpt(m))
+			recSet[currentModel] = true
 		}
 	}
 
-	// 2. 其余可用模型按字母序追加
+	// 2. 推荐主流模型列表
+	for _, id := range recommended {
+		if m, ok := api.Find(chat, id); ok {
+			opts = append(opts, formatOpt(m))
+		}
+	}
+
+	// 3. 其余模型按名称升序追加
 	var others []api.Model
 	for _, m := range chat {
 		if !recSet[m.ID] {
@@ -213,16 +296,16 @@ func promptSelectModel(chat []api.Model) (string, error) {
 	})
 
 	for _, m := range others {
-		ctxStr := ""
-		if m.ContextLength > 0 {
-			ctxStr = fmt.Sprintf(" (%s ctx)", ui.Ctx(m.ContextLength))
-		}
-		label := ui.Pad(m.ID, 28) + " " + ui.Dim.Render(m.OwnedBy+ctxStr)
-		opts = append(opts, ui.Option{Label: label, Value: m.ID})
+		opts = append(opts, formatOpt(m))
+	}
+
+	title := fmt.Sprintf("为 [%s] 选择新的默认模型：", harnessName)
+	if currentModel != "" {
+		title = fmt.Sprintf("为 [%s] 选择新的默认模型 (当前: %s)：", harnessName, currentModel)
 	}
 
 	ui.Println()
-	choice, err := ui.AskSelect("请选择要设为默认的主流模型：", "", opts)
+	choice, err := ui.AskSelect(title, currentModel, opts)
 	if err != nil {
 		return "", err
 	}

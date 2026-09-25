@@ -166,6 +166,41 @@ crapi setup --dry-run
 
 ---
 
+### 快速查看与切换默认模型 (use / switch)
+
+随时查看各个 Agent 工具当前正在使用的默认模型，并进行全局或单个工具的快捷切换：
+
+```bash
+# 交互式切换：先列出所有 Agent 工具及其当前使用的默认模型，再选择要换的模型
+crapi use
+
+# 查看指定工具当前模型并交互式切换
+crapi use claude
+
+# 一键将指定工具切换为目标模型
+crapi use claude claude-opus-5-5
+crapi use codex gpt-5.6-sol
+
+# 一键把全部已接入的工具统一切换为目标模型
+crapi use claude-opus-5-5
+```
+
+---
+
+### 智能重新初始化与新装 CLI 适配 (reload)
+
+如果你在安装 `crapi` 之后又在电脑上安装了新的 Agent CLI（例如新装了 Kimi、OpenCode、Codex 等），运行 `crapi reload` 即可自动识别并一键补齐接入配置，无需重新输入 API Key：
+
+```bash
+# 自动扫描本机新安装的 Agent CLI 并完成一键适配，同时刷新已有工具
+crapi reload
+
+# 智能重新初始化并顺便将默认模型统一设置为指定模型
+crapi reload --model claude-opus-5-5
+```
+
+---
+
 ### 上游模型热更新 (update)
 
 当小鸡云 CPA 网关上线新模型或调整渠道时，运行 `crapi update` 即可无缝同步：
