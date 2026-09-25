@@ -234,15 +234,29 @@ crapi pool
 
 ---
 
-### 7. 配置回滚与健康自检 (restore / doctor)
+### 7. 一键退出与退回原本个人配置 (reset / unsetup)
+
+随时随地安全退出 Crosery 配置，将指定工具（或全部工具）恢复为你原本的官方个人账号或原始配置：
 
 ```bash
-# 列出所有可用的备份记录
-crapi restore --list
+# 交互式退回菜单：浏览已接入工具列表，选择要退回原本配置的工具（支持单选或一键全部退回）
+crapi reset
 
-# 将 Claude Code 的配置回滚至最近一次修改前的备份
-crapi restore claude
+# 将 OpenAI Codex CLI 退出 Crosery，恢复为你原本登录的官方个人账号
+crapi reset codex
 
+# 将 Claude Code 退出 Crosery，恢复官方直连模式
+crapi reset claude
+
+# 一键退回本机所有已接入 Crosery 的 Agent 工具
+crapi reset --all
+```
+
+---
+
+### 8. 健康自检与环境诊断 (doctor)
+
+```bash
 # 全面诊断网络连通性、API Key 有效性与各工具配置状态
 crapi doctor
 ```

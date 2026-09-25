@@ -60,6 +60,7 @@ func cmdHome(a *App) error {
 			{Label: ui.Pad("上游号池状态 (pool)", 22) + ui.Dim.Render("各渠道号池健康状态、冷却与并发水位"), Value: "pool"},
 			{Label: ui.Pad("快捷全量生图 (image)", 22) + ui.Dim.Render("最新 gpt-image 批量生图与图像编辑"), Value: "image"},
 			{Label: ui.Pad("工具接入状态 (status)", 22) + ui.Dim.Render("查看本机所有 Harness 安装与模型配置"), Value: "status"},
+			{Label: ui.Pad("退回原本配置 (reset)", 22) + ui.Dim.Render("一键退出 Crosery 并恢复个人原本的账号与配置"), Value: "reset"},
 			{Label: ui.Pad("更换 API Key (key)", 22) + ui.Dim.Render("重新设置当前生效的 Crosery API Key"), Value: "key"},
 			{Label: ui.Pad("系统环境诊断 (doctor)", 22) + ui.Dim.Render("网络、终端编码与配置合法性检查"), Value: "doctor"},
 			{Label: ui.Pad("退出 (quit)", 22) + ui.Dim.Render("退出 crapi 控制台"), Value: "quit"},
@@ -95,6 +96,9 @@ func cmdHome(a *App) error {
 			pauseAfter = true
 		case "status":
 			runErr = cmdStatus(a, nil)
+			pauseAfter = true
+		case "reset":
+			runErr = cmdReset(a, nil)
 			pauseAfter = true
 		case "key":
 			runErr = cmdKey(a, []string{"set"})

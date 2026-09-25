@@ -235,11 +235,11 @@ func chooseHarnesses(env harness.Env, base string, targets []string, all, yes bo
 			tag += " " + ui.AccentS.Render(g.Dot+" 已接入")
 		}
 		label := ui.Pad(r.h.Name(), 18) + " " + ui.Dim.Render(ui.Pad(string(r.h.Category()), 5)) + " " + tag
-		opts = append(opts, ui.Option{Label: label, Value: r.h.ID(), Selected: r.det.Installed})
+		opts = append(opts, ui.Option{Label: label, Value: r.h.ID(), Selected: false})
 	}
 	ui.Println()
-	picked, err := ui.AskMulti("选择要接入 crosery 的 agent harness",
-		fmt.Sprintf("已为你勾选检测到的 %d 个。空格勾选 / 取消，回车确认。", installed), opts)
+	picked, err := ui.AskMulti("请勾选需要接入 Crosery 的 Agent 工具",
+		fmt.Sprintf("检测到 %d 个已安装的工具。请按空格键勾选要接入的工具，回车确认（默认全部未勾选，避免影响现有配置）。", installed), opts)
 	if err != nil {
 		return nil, err
 	}

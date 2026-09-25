@@ -60,6 +60,13 @@ crapi update
 crapi usage         # 查看今日/本周/总额度、Token 消耗与近况流水
 crapi pool          # 查看上游渠道号池健康度与冷却状态
 ` + "```" + `
+
+### 6. 一键退出与退回原本个人配置
+` + "```bash" + `
+crapi reset         # 交互式挑选工具退回原本的官方个人账号/配置
+crapi reset codex   # 将 Codex CLI 退出 Crosery 并恢复个人账号
+crapi reset claude  # 将 Claude Code 退出 Crosery 恢复官方直连
+` + "```" + `
 `
 
 // KnownSkillDirs 返回各 Agent Harness 常见的 skills 存放目录。
