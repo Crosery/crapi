@@ -47,7 +47,8 @@ fetch() { # fetch <url> <out> [timeout_seconds]
   fi
 }
 
-# 候选下载节点（官方源 + 国内高可用加速镜像）
+# 候选下载节点（七牛云 CDN 极速源 + GitHub 官方源 + 国内加速镜像）
+PRIMARY_BASE="https://cdn.crosery.com/crapi"
 OFFICIAL_BASE="https://github.com/crosery/crapi/releases/latest/download"
 CANDIDATE_BASES=""
 
@@ -56,21 +57,7 @@ if [ -n "${CRAPI_DOWNLOAD_BASE:-}" ]; then
 else
   M1="https://ghfast.top/$OFFICIAL_BASE"
   M2="https://ghproxy.net/$OFFICIAL_BASE"
-  M3="https://gh-proxy.com/$OFFICIAL_BASE"
-
-  # 快速连接探测（2 秒超时）判断是否直连通畅
-  CAN_DIRECT=0
-  if command -v curl >/dev/null 2>&1; then
-    curl -fsSL -I --connect-timeout 2 "https://github.com" >/dev/null 2>&1 && CAN_DIRECT=1 || true
-  elif command -v wget >/dev/null 2>&1; then
-    wget -q -T 2 --spider "https://github.com" >/dev/null 2>&1 && CAN_DIRECT=1 || true
-  fi
-
-  if [ "$CAN_DIRECT" = "1" ]; then
-    CANDIDATE_BASES="$OFFICIAL_BASE $M1 $M2 $M3"
-  else
-    CANDIDATE_BASES="$M1 $M2 $M3 $OFFICIAL_BASE"
-  fi
+  CANDIDATE_BASES="$PRIMARY_BASE $M1 $OFFICIAL_BASE $M2"
 fi
 
 ASSET="crapi-$OS-$ARCH"
@@ -81,7 +68,9 @@ printf '\n%s  crapi · Crosery CPA 一键接入%s\n\n' "$Y" "$N"
 
 CHOSEN_BASE=""
 for base in $CANDIDATE_BASES; do
-  if [ "$base" = "$OFFICIAL_BASE" ]; then
+  if [ "$base" = "$PRIMARY_BASE" ]; then
+    say "正在从七牛云 CDN 高速下载 $ASSET..."
+  elif [ "$base" = "$OFFICIAL_BASE" ]; then
     say "正在从官方源下载 $ASSET..."
   else
     say "正在通过国内加速节点下载 $ASSET..."

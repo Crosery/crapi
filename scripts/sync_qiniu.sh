@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# 自动同步 crapi 发布产物到七牛云存储桶 crosery 并刷新 CDN 缓存。
+# 用法：scripts/sync_qiniu.sh [version]
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+VERSION="${1:-0.1.5}"
+echo "1. 编译全平台产物（版本：$VERSION）..."
+./scripts/build.sh "$VERSION"
+
+echo "2. 确保七牛云账号切换到 crosery..."
+qshell user cu crosery
+
+echo "3. 上传 dist 产物到七牛云 crosery:crapi/..."
+for f in dist/*; do
+  name="$(basename "$f")"
+  echo "  --> 上传 $name ..."
+  qshell rput crosery "crapi/$name" "$f" --overwrite >/dev/null
+done
+
+echo "4. 刷新七牛云 CDN 缓存 (https://cdn.crosery.com/crapi/)..."
+echo "https://cdn.crosery.com/crapi/" | qshell cdnrefresh -r
+
+echo "同步完成！可通过以下直连高速链接验证："
+echo "  https://cdn.crosery.com/crapi/VERSION"
+echo "  https://cdn.crosery.com/crapi/install.sh"
+echo "  https://cdn.crosery.com/crapi/install.ps1"

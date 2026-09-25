@@ -25,30 +25,15 @@
   try {
     try { [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor 3072 } catch {}
 
+    $primaryBase = 'https://cdn.crosery.com/crapi'
     $officialBase = 'https://github.com/crosery/crapi/releases/latest/download'
     $candidates = @()
     if ($env:CRAPI_DOWNLOAD_BASE) {
       $candidates += $env:CRAPI_DOWNLOAD_BASE.TrimEnd('/')
     } else {
-      $canDirect = $false
-      try {
-        $req = [System.Net.WebRequest]::Create('https://github.com')
-        $req.Timeout = 2000
-        $req.Method = 'HEAD'
-        $resp = $req.GetResponse()
-        $resp.Close()
-        $canDirect = $true
-      } catch {}
-
       $m1 = "https://ghfast.top/$officialBase"
       $m2 = "https://ghproxy.net/$officialBase"
-      $m3 = "https://gh-proxy.com/$officialBase"
-
-      if ($canDirect) {
-        $candidates = @($officialBase, $m1, $m2, $m3)
-      } else {
-        $candidates = @($m1, $m2, $m3, $officialBase)
-      }
+      $candidates = @($primaryBase, $m1, $officialBase, $m2)
     }
 
     $arch = $env:PROCESSOR_ARCHITEW6432
@@ -74,10 +59,12 @@
     $chosenBase = $null
     foreach ($cand in $candidates) {
       try {
-        if ($cand -eq $officialBase) {
+        if ($cand -eq $primaryBase) {
+          Say ((M '\u6b63\u5728\u4ece\u4e03\u725b\u4e91 CDN \u9ad8\u901f\u4e0b\u8f7d ') + $asset + '...')
+        } elseif ($cand -eq $officialBase) {
           Say ((M '\u6b63\u5728\u4ece\u5b98\u65b9\u6e90\u4e0b\u8f7d ') + $asset + '...')
         } else {
-          Say ((M '\u6b63\u5728\u901a\u8fc7\u56fd\u5185\u52a0\u901f\u8282\u70b9\u4e0b\u8f7d ') + $asset + '...')
+          Say ((M '\u6b63\u5728\u901a\u8fc7\u52a0\u901f\u8282\u70b9\u4e0b\u8f7d ') + $asset + '...')
         }
         Invoke-WebRequest -UseBasicParsing -Uri "$cand/$asset" -OutFile $tmp -TimeoutSec 30
         $chosenBase = $cand

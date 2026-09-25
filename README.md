@@ -65,13 +65,13 @@
 
 ### 1. macOS & Linux
 
-#### 全球 CDN 高速安装（国内推荐，免代理直连）
+#### 七牛云 CDN 极速安装（国内推荐，毫秒级直连）
 ```bash
 # 交互式引导安装
-curl -fsSL https://cdn.jsdelivr.net/gh/crosery/crapi/install.sh | sh
+curl -fsSL https://cdn.crosery.com/crapi/install.sh | sh
 
 # 带 Key 免交互全自动安装（适合自动化脚本）
-curl -fsSL https://cdn.jsdelivr.net/gh/crosery/crapi/install.sh | sh -s -- --key sk-your-key-here
+curl -fsSL https://cdn.crosery.com/crapi/install.sh | sh -s -- --key sk-your-key-here
 ```
 
 #### GitHub 加速镜像备用
@@ -90,13 +90,13 @@ curl -fsSL https://raw.githubusercontent.com/crosery/crapi/main/install.sh | sh
 
 以普通用户权限打开 PowerShell 窗口：
 
-#### 全球 CDN 高速安装（国内推荐，免代理直连）
+#### 七牛云 CDN 极速安装（国内推荐，毫秒级直连）
 ```powershell
 # 交互式引导安装
-irm https://cdn.jsdelivr.net/gh/crosery/crapi/install.ps1 | iex
+irm https://cdn.crosery.com/crapi/install.ps1 | iex
 
 # 带 Key 免交互全自动安装
-$env:CRAPI_KEY='sk-your-key-here'; irm https://cdn.jsdelivr.net/gh/crosery/crapi/install.ps1 | iex
+$env:CRAPI_KEY='sk-your-key-here'; irm https://cdn.crosery.com/crapi/install.ps1 | iex
 ```
 
 #### GitHub 加速镜像备用
@@ -114,7 +114,7 @@ irm https://raw.githubusercontent.com/crosery/crapi/main/install.ps1 | iex
 ### 3. Windows (传统命令提示符 cmd.exe)
 
 ```cmd
-powershell -ExecutionPolicy Bypass -c "irm https://cdn.jsdelivr.net/gh/crosery/crapi/install.ps1 | iex"
+powershell -ExecutionPolicy Bypass -c "irm https://cdn.crosery.com/crapi/install.ps1 | iex"
 ```
 
 Windows 说明：安装脚本会自动将 `crapi.exe` 目录添加至用户注册表 `HKCU\Environment\Path` 并广播刷新系统环境变量，新开终端即可直接使用 `crapi` 命令。

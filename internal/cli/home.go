@@ -128,8 +128,8 @@ func sortStrings(s []string) []string {
 // ---------- upgrade ----------
 
 // DownloadBase 是发布产物的下载根地址；需要 VERSION、SHA256SUMS 与 crapi-<os>-<arch>[.exe]。
-// 可用环境变量 CRAPI_DOWNLOAD_BASE 覆盖（镜像 / 内网）。
-var DownloadBase = "https://github.com/crosery/crapi/releases/latest/download"
+// 默认首选七牛云 CDN 极速源，可用环境变量 CRAPI_DOWNLOAD_BASE 覆盖。
+var DownloadBase = "https://cdn.crosery.com/crapi"
 
 func downloadBase() string {
 	if v := strings.TrimSpace(os.Getenv("CRAPI_DOWNLOAD_BASE")); v != "" {
