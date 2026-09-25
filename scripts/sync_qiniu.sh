@@ -21,6 +21,14 @@ done
 echo "4. 刷新七牛云 CDN 缓存 (https://cdn.crosery.com/crapi/)..."
 echo "https://cdn.crosery.com/crapi/" | qshell cdnrefresh -r
 
+echo "5. 同步更新 GitHub Release (v$VERSION)..."
+if command -v gh >/dev/null 2>&1; then
+  git tag -f "v$VERSION"
+  git push origin "v$VERSION" --force 2>/dev/null || true
+  gh release delete "v$VERSION" -y 2>/dev/null || true
+  gh release create "v$VERSION" dist/* --title "Release v$VERSION" --notes "Release v$VERSION with Qiniu CDN and multi-mirror sync" 2>/dev/null || true
+fi
+
 echo "同步完成！可通过以下直连高速链接验证："
 echo "  https://cdn.crosery.com/crapi/VERSION"
 echo "  https://cdn.crosery.com/crapi/install.sh"
