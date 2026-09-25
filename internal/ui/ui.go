@@ -19,7 +19,7 @@ import (
 // 中间调配色：深色与浅色背景下都可读，不依赖终端背景探测
 // （探测在部分 Windows 控制台里会卡住或回显转义序列）。
 var (
-	Brand  color.Color = lipgloss.Color("#F5A524") // 小鸡黄
+	Brand  color.Color = lipgloss.Color("#F5A524") // Crosery 品牌黄
 	Accent color.Color = lipgloss.Color("#14B8A6")
 	Muted  color.Color = lipgloss.Color("#8A8F98")
 	OKC    color.Color = lipgloss.Color("#22C55E")
@@ -87,7 +87,7 @@ func Printf(format string, a ...any) { _, _ = fmt.Fprintf(Out, format, a...) }
 // Banner 打印品牌头。
 func Banner(version, baseURL string) {
 	g := G()
-	title := BrandS.Render(g.Mark+" crapi") + "  " + Bold.Render("crosery渠道模型一键接入") + "  " + Dim.Render(version)
+	title := BrandS.Render(g.Mark+" crapi") + "  " + Bold.Render("Crosery CPA 一键接入") + "  " + Dim.Render(version)
 	sub := Dim.Render(baseURL)
 	box := lipgloss.NewStyle().
 		Border(g.Border).

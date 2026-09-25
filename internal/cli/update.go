@@ -13,7 +13,7 @@ import (
 
 const updateHelp = `crapi update [harness...] [参数]
 
-从网关拉取当前 Key 可用的最新模型与渠道，刷新所有已接入小鸡云的 harness：
+从网关拉取当前 Key 可用的最新模型与渠道，刷新所有已接入 Crosery CPA 的 harness：
 新上线的模型加进各自的模型目录，下线的模型移除；你手动选过的默认模型只要还可用就保留。
 
 参数：
@@ -48,7 +48,7 @@ func cmdUpdate(a *App, args []string) error {
 			return err
 		}
 	} else {
-		// 已被 crapi 接管过的 + 当前配置指向小鸡云的，都刷新。
+		// 已被 crapi 接管过的 + 当前配置指向 Crosery CPA 的，都刷新。
 		for _, h := range harness.All() {
 			_, managed := a.Cfg.Managed[h.ID()]
 			det := h.Detect(env)

@@ -16,7 +16,7 @@ import (
 const ProviderID = "crosery"
 
 // ProviderName 是展示名。
-const ProviderName = "小鸡云 Crosery"
+const ProviderName = "Crosery"
 
 // Category 标记 harness 的形态。
 type Category string
@@ -33,7 +33,7 @@ type Detection struct {
 	Where     string
 }
 
-// Status 描述 harness 当前是否已指向小鸡云。
+// Status 描述 harness 当前是否已指向 Crosery。
 type Status struct {
 	Configured bool
 	Model      string
@@ -121,7 +121,6 @@ func All() []Harness {
 		cherry{},
 	}
 }
-
 
 // Get 按 id 或别名查找适配器。
 func Get(id string) (Harness, bool) {

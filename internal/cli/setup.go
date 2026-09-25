@@ -17,7 +17,7 @@ import (
 
 const setupHelp = `crapi setup [harness...] [参数]
 
-输入 API Key 后，自动探测本机已安装的 agent harness 并写入小鸡云配置。
+输入 API Key 后，自动探测本机已安装的 agent harness 并写入 Crosery CPA 配置。
 不写 harness 名称时，交互式勾选（默认勾选已安装的）。
 
 参数：

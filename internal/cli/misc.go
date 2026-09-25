@@ -75,7 +75,7 @@ func cmdStatus(a *App, args []string) error {
 		rows = append(rows, []string{it.Name, it.ID, it.Category, inst, conf, ui.Truncate(it.Model, 30)})
 	}
 	ui.Section("Harness 接入状态", fmt.Sprintf("支持 %d 个 · 已安装 %d · 已接入 %d", len(items), installed, configured))
-	ui.Println(indent(ui.Table([]string{"名称", "标识", "类型", "安装", "小鸡云", "默认模型"}, rows,
+	ui.Println(indent(ui.Table([]string{"名称", "标识", "类型", "安装", "Crosery", "默认模型"}, rows,
 		ui.Left, ui.Left, ui.Left, ui.Center, ui.Left, ui.Left), "  "))
 	ui.Println()
 	ui.Note("接入未接入的：crapi setup <标识>；同步最新模型：crapi update")
@@ -216,7 +216,7 @@ func cmdDoctor(a *App, _ []string) error {
 		glyph = "ASCII（兼容旧版控制台；设 CRAPI_GLYPHS=unicode 可强制切换）"
 	}
 	ui.KV("界面字形", glyph)
-	ui.KV("中文测试", "小鸡云 · 你好，世界 "+g.OK)
+	ui.KV("中文测试", "Crosery · 你好，世界 "+g.OK)
 	exe, _ := os.Executable()
 	ui.KV("程序位置", exe)
 	ui.KV("配置文件", store.Path())

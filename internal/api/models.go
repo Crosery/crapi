@@ -189,7 +189,7 @@ var (
 	PrefGemini = []string{"gemini-3.1-pro-preview", "gemini-3.8-flash", "gemini-3.1-pro-low", "gemini-3.5-flash-lite"}
 	PrefFast   = []string{"gpt-6-luna", "gpt-5.6-luna", "claude-haiku-4-5-20251001", "gemini-3.8-flash", "deepseek-v4.1-flash", "qcn-glm-5.3-flash"}
 	PrefAgent  = append(append(append([]string{}, PrefOpus[:2]...), PrefGPT[:3]...), PrefSonnet...)
-	PrefImage  = []string{"gpt-image-2", "gpt-image-2.5", "gpt-image-1.5", "gemini-3.1-flash-image"}
+	PrefImage  = []string{"gpt-image-2.5", "gpt-image-2", "gpt-image-1.5", "gpt-image-1", "gpt-image", "gemini-3.1-flash-image"}
 )
 
 // VendorIs 返回一个按厂商过滤的谓词。

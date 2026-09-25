@@ -68,7 +68,7 @@
     $tmp = Join-Path $dir 'crapi.exe.download'
 
     Write-Host ''
-    Write-Host ('  crapi  ' + (M 'MSG{crosery渠道模型一键接入}')) -ForegroundColor Yellow
+    Write-Host ('  crapi  ' + (M 'MSG{Crosery CPA 一键接入}')) -ForegroundColor Yellow
     Write-Host ''
 
     $chosenBase = $null

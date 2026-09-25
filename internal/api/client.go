@@ -1,4 +1,4 @@
-// Package api 是小鸡云 CPA 网关（ai.crosery.com）与控制台（console.ai.crosery.com）的客户端。
+// Package api 是 Crosery CPA 网关（ai.crosery.com）与控制台（console.ai.crosery.com）的客户端。
 // 网关提供 /v1/models、生图等业务接口；控制台提供按 Key 自助查询的用量与号池接口。
 package api
 

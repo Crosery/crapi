@@ -77,7 +77,7 @@ ASSET="crapi-$OS-$ARCH"
 TMP="$(mktemp -d 2>/dev/null || mktemp -d -t crapi)"
 trap 'rm -rf "$TMP"' EXIT INT TERM
 
-printf '\n%s  crapi · crosery渠道模型一键接入%s\n\n' "$Y" "$N"
+printf '\n%s  crapi · Crosery CPA 一键接入%s\n\n' "$Y" "$N"
 
 CHOSEN_BASE=""
 for base in $CANDIDATE_BASES; do
