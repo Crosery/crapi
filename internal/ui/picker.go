@@ -45,6 +45,7 @@ type pickerModel struct {
 	filteredModels  []PickerItem
 	selectedHarness PickerItem
 	cursor          int
+	harnessCursor   int // 记录离开 Harness 列表时光标所在的精确位置，确保 Esc 返回时完美保留
 	searchQuery     string
 	message         string
 	messageIsErr    bool
@@ -138,11 +139,17 @@ func (m *pickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.quitting = true
 					return m, tea.Quit
 				}
-				// 否则原地返回到选择工具阶段
+				// 原地返回到选择工具阶段，并完美恢复之前所在的光标位置
 				m.stage = StageHarness
 				m.searchQuery = ""
-				m.cursor = 0
 				m.refilterHarnesses()
+				m.cursor = m.harnessCursor
+				if m.cursor >= len(m.filteredHarness) {
+					m.cursor = len(m.filteredHarness) - 1
+				}
+				if m.cursor < 0 {
+					m.cursor = 0
+				}
 				return m, nil
 			}
 			// StageHarness 阶段按 Esc：退出
@@ -188,7 +195,8 @@ func (m *pickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			selected := list[m.cursor]
 
 			if m.stage == StageHarness {
-				// 进入模型选择
+				// 记录在 Harness 列表的光标位置，进入模型选择
+				m.harnessCursor = m.cursor
 				m.selectedHarness = selected
 				m.stage = StageModel
 				m.searchQuery = ""
@@ -226,16 +234,16 @@ func (m *pickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, tea.Quit
 			}
 
-			// 原地切回 Harness 列表，用户可以继续挑下一个
+			// 原地切回 Harness 列表，光标精准保持在刚才操作的那个 harness 上
 			m.stage = StageHarness
 			m.searchQuery = ""
 			m.refilterHarnesses()
-			// 光标保持在该 harness 上
-			for idx, h := range m.filteredHarness {
-				if h.ID == m.selectedHarness.ID {
-					m.cursor = idx
-					break
-				}
+			m.cursor = m.harnessCursor
+			if m.cursor >= len(m.filteredHarness) {
+				m.cursor = len(m.filteredHarness) - 1
+			}
+			if m.cursor < 0 {
+				m.cursor = 0
 			}
 			return m, nil
 

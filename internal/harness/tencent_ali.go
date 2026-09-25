@@ -24,19 +24,46 @@ func buddyModel(p Plan, m api.Model) *Obj {
 	)
 }
 
-// mergeBuddyModels 用本渠道的新条目替换旧条目（按 url 识别），保留用户自己的其他模型。
-func mergeBuddyModels(existing []any, p Plan) []any {
-	var out []any
+// mergeBuddyModels 用本渠道的新条目替换旧条目（按 url 识别），并将选定的目标默认模型置顶于数组第 0 位并打上默认标记，
+// 确保在 WorkBuddy / CodeBuddy 未登录或首次加载时直接将该模型作为当前活跃模型。
+func mergeBuddyModels(existing []any, p Plan, targetModel string) []any {
+	var otherVendors []any
 	for _, e := range existing {
 		if o, ok := e.(*Obj); ok && baseMatches(o.Str("url"), p.BaseURL) {
 			continue
 		}
-		out = append(out, e)
+		otherVendors = append(otherVendors, e)
 	}
+
+	var targetEntry *Obj
+	var otherEntries []any
+
 	for _, m := range agentModels(p) {
-		out = append(out, buddyModel(p, m))
+		item := buddyModel(p, m)
+		if m.ID == targetModel {
+			item.Set("isDefault", true)
+			item.Set("default", true)
+			item.Set("selected", true)
+			targetEntry = item
+		} else {
+			item.Set("isDefault", false)
+			item.Set("default", false)
+			item.Set("selected", false)
+			otherEntries = append(otherEntries, item)
+		}
 	}
-	return out
+
+	var ourModels []any
+	if targetEntry != nil {
+		ourModels = append(ourModels, targetEntry)
+	}
+	ourModels = append(ourModels, otherEntries...)
+
+	// 将我们渠道的置顶模型放在数组最前面，未登录时应用直接取 index 0 生效
+	var finalOut []any
+	finalOut = append(finalOut, ourModels...)
+	finalOut = append(finalOut, otherVendors...)
+	return finalOut
 }
 
 // codebuddy（腾讯 CodeBuddy Code CLI）：~/.codebuddy/models.json + settings.json 的 model。
@@ -84,8 +111,18 @@ func (x codebuddy) Apply(e Env, p Plan, w *Writer) (Result, error) {
 	if err != nil {
 		return Result{}, err
 	}
+	sf, _, err := readJSONFile(sPath)
+	if err != nil {
+		return Result{}, err
+	}
+	prev := sf.Str("model")
+	model := p.Choose(prev, api.PrefAgent)
+	if !p.UpdateOnly || prev != model {
+		sf.Set("model", model)
+	}
+
 	existing, _ := anyOr(mf, "models").([]any)
-	merged := mergeBuddyModels(existing, p)
+	merged := mergeBuddyModels(existing, p, model)
 	mf.Set("models", merged)
 	// availableModels 与产品内置列表合并，不会隐藏内置模型。
 	var avail []any
@@ -104,15 +141,6 @@ func (x codebuddy) Apply(e Env, p Plan, w *Writer) (Result, error) {
 	}
 	mf.Set("availableModels", avail)
 
-	sf, _, err := readJSONFile(sPath)
-	if err != nil {
-		return Result{}, err
-	}
-	prev := sf.Str("model")
-	model := p.Choose(prev, api.PrefAgent)
-	if !p.UpdateOnly || prev != model {
-		sf.Set("model", model)
-	}
 	if err := w.Write(mPath, MarshalJSON(mf), 0o600); err != nil {
 		return Result{}, err
 	}
@@ -146,12 +174,36 @@ func (x workbuddy) Status(e Env, base string) Status {
 		return Status{}
 	}
 	list := buddyList(data)
-	for _, v := range list {
+	if len(list) == 0 {
+		return Status{}
+	}
+
+	configured := false
+	firstModel := ""
+	for i, v := range list {
 		if o, ok := v.(*Obj); ok && baseMatches(o.Str("url"), base) {
-			return Status{Configured: true, Detail: "在应用内「自定义模型」分组里选择"}
+			configured = true
+			if firstModel == "" || o.Has("isDefault") || o.Has("selected") || i == 0 {
+				firstModel = o.Str("id")
+			}
 		}
 	}
-	return Status{}
+	if !configured {
+		return Status{}
+	}
+
+	// 优先读取 settings.json 显式指定的模型
+	settingsPath := filepath.Join(filepath.Dir(x.path(e)), "settings.json")
+	if sf, _, err := readJSONFile(settingsPath); err == nil && sf != nil {
+		if m := sf.Str("model"); m != "" {
+			return Status{Configured: true, Model: m}
+		}
+		if m := sf.Str("defaultModel"); m != "" {
+			return Status{Configured: true, Model: m}
+		}
+	}
+
+	return Status{Configured: true, Model: firstModel}
 }
 
 func buddyList(data []byte) []any {
@@ -167,13 +219,27 @@ func buddyList(data []byte) []any {
 
 func (x workbuddy) Apply(e Env, p Plan, w *Writer) (Result, error) {
 	data, _ := os.ReadFile(x.path(e))
-	merged := mergeBuddyModels(buddyList(data), p)
+	prev := x.Status(e, p.BaseURL).Model
+	model := p.Choose(prev, api.PrefAgent)
+
+	// 关键：将选中的默认模型置顶于 models.json 的第 0 位并打上默认标记
+	merged := mergeBuddyModels(buddyList(data), p, model)
 	if err := w.Write(x.path(e), MarshalJSON(merged), 0o600); err != nil {
 		return Result{}, err
 	}
-	model := p.Choose("", api.PrefAgent)
+
+	// 同步写入 settings.json，确保在未登录和已登录场景下 WorkBuddy 均直接以该模型为默认模型
+	settingsPath := filepath.Join(filepath.Dir(x.path(e)), "settings.json")
+	sf, _, err := readJSONFile(settingsPath)
+	if err == nil && sf != nil {
+		sf.Set("model", model)
+		sf.Set("defaultModel", model)
+		sf.Set("selectedModel", model)
+		_ = w.Write(settingsPath, MarshalJSON(sf), 0o644)
+	}
+
 	return Result{Files: w.Written(), Model: model, Notes: []string{
-		"应用会自动热加载；在模型选择器的「自定义模型」分组里选中 " + model,
+		"已将 " + model + " 设为默认模型并置顶（未登录与已登录状态均生效）",
 	}}, nil
 }
 
