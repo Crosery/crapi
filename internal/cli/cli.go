@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/crosery/crapi/internal/api"
+	"github.com/crosery/crapi/internal/harness"
 	"github.com/crosery/crapi/internal/store"
 	"github.com/crosery/crapi/internal/term"
 	"github.com/crosery/crapi/internal/ui"
@@ -82,6 +83,8 @@ func Main(version string, args []string) int {
 	}
 	a := &App{Version: version, Cfg: cfg, ctx: ctx}
 	cleanupOld()
+	_ = harness.SyncAllSkills(harness.DefaultEnv())
+	checkAutoUpdate(a)
 
 	if len(args) == 0 {
 		err = cmdHome(a)

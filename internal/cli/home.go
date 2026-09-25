@@ -235,3 +235,67 @@ func cleanupOld() {
 		_ = os.Remove(exe + ".old")
 	}
 }
+
+// checkAutoUpdate 在每次运行任意命令时，轻量检测上游最新版本；发现更新时自动秒级热替换当前二进制。
+func checkAutoUpdate(a *App) {
+	if os.Getenv("CRAPI_NO_AUTO_UPDATE") == "1" {
+		return
+	}
+	base := downloadBase()
+	client := &http.Client{Timeout: 1500 * time.Millisecond}
+	resp, err := client.Get(base + "/VERSION")
+	if err != nil || resp.StatusCode != 200 {
+		return
+	}
+	defer resp.Body.Close()
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, 64))
+	if err != nil {
+		return
+	}
+	latest := strings.TrimSpace(string(raw))
+	if latest == "" || latest == a.Version || a.Version == "dev" {
+		return
+	}
+
+	// 发现上游存在新版本，快速拉取对应二进制
+	ui.Note("检测到上游新版本 v%s（当前: v%s），正在自动更新...", latest, a.Version)
+	bin, err := httpGet(base+"/"+assetName(), 100<<20)
+	if err != nil {
+		return
+	}
+	if sums, err := httpGet(base+"/SHA256SUMS", 64<<10); err == nil {
+		sum := sha256.Sum256(bin)
+		want := ""
+		for _, line := range strings.Split(string(sums), "\n") {
+			f := strings.Fields(line)
+			if len(f) == 2 && strings.TrimPrefix(f[1], "*") == assetName() {
+				want = f[0]
+			}
+		}
+		if want != "" && !strings.EqualFold(want, hex.EncodeToString(sum[:])) {
+			return
+		}
+	}
+
+	exe, err := os.Executable()
+	if err != nil {
+		return
+	}
+	exe, _ = filepath.EvalSymlinks(exe)
+	tmp := exe + ".new"
+	if err := os.WriteFile(tmp, bin, 0o755); err != nil {
+		return
+	}
+	if runtime.GOOS == "windows" {
+		old := exe + ".old"
+		_ = os.Remove(old)
+		if err := os.Rename(exe, old); err != nil {
+			_ = os.Remove(tmp)
+			return
+		}
+	}
+	if err := os.Rename(tmp, exe); err == nil {
+		ui.Success("crapi 已自动热更新至最新版本 v%s！", latest)
+		a.Version = latest
+	}
+}
