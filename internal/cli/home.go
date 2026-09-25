@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bufio"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -30,67 +31,87 @@ func cmdHome(a *App) error {
 	if !term.Interactive() {
 		return cmdHelp(a, nil)
 	}
-	ui.Banner(a.Version, a.Cfg.Base())
-	ui.KV("API Key", store.MaskKey(a.Cfg.Key()))
-	if len(a.Cfg.Managed) > 0 {
-		var names []string
-		for id := range a.Cfg.Managed {
-			names = append(names, id)
-		}
-		ui.KV("已接入", strings.Join(sortStrings(names), ", "))
-	}
-	if !a.Cfg.LastUpdate.IsZero() {
-		ui.KV("上次同步", a.Cfg.LastUpdate.Local().Format("2006-01-02 15:04"))
-	}
+
 	for {
+		ui.ClearScreen()
+		ui.Banner(a.Version, a.Cfg.Base())
+		ui.KV("API Key", store.MaskKey(a.Cfg.Key()))
+		if len(a.Cfg.Managed) > 0 {
+			var names []string
+			for id := range a.Cfg.Managed {
+				names = append(names, id)
+			}
+			ui.KV("已接入", fmt.Sprintf("%d 个工具 (%s)", len(names), strings.Join(sortStrings(names), ", ")))
+		}
+		if a.Cfg.DefaultModel != "" {
+			ui.KV("全局默认模型", a.Cfg.DefaultModel)
+		}
+		if !a.Cfg.LastUpdate.IsZero() {
+			ui.KV("上次同步", a.Cfg.LastUpdate.Local().Format("2006-01-02 15:04"))
+		}
+
 		ui.Println()
-		choice, err := ui.AskSelect("要做什么？", "", []ui.Option{
-			{Label: "切换默认主流模型", Value: "use"},
-			{Label: "智能重新初始化（适配新安装的 CLI）", Value: "reload"},
-			{Label: "查看用量与额度", Value: "usage"},
-			{Label: "查看号池状态", Value: "pool"},
-			{Label: "同步最新模型到所有 harness", Value: "update"},
-			{Label: "配置 / 新增 agent harness", Value: "setup"},
-			{Label: "查看可用模型", Value: "models"},
-			{Label: "查看渠道", Value: "channels"},
-			{Label: "生图", Value: "image"},
-			{Label: "harness 接入状态", Value: "status"},
-			{Label: "更换 API Key", Value: "key"},
-			{Label: "诊断", Value: "doctor"},
-			{Label: "退出", Value: "quit"},
+		choice, err := ui.AskSelect("请选择功能：", "use", []ui.Option{
+			{Label: ui.Pad("切换默认模型 (use)", 22) + ui.Dim.Render("单屏动态查看并切换各 Agent 主流模型 (支持实时打字搜索)"), Value: "use"},
+			{Label: ui.Pad("智能重新适配 (reload)", 22) + ui.Dim.Render("自动识别新安装的 Agent CLI 并一键接入"), Value: "reload"},
+			{Label: ui.Pad("同步最新模型 (update)", 22) + ui.Dim.Render("从网关拉取最新模型目录并增量刷新"), Value: "update"},
+			{Label: ui.Pad("批量配置工具 (setup)", 22) + ui.Dim.Render("一键批量配置本机全部 Agent Harness"), Value: "setup"},
+			{Label: ui.Pad("额度与用量 (usage)", 22) + ui.Dim.Render("今日/本周/总额度、Token 消耗与近况流水"), Value: "usage"},
+			{Label: ui.Pad("上游号池状态 (pool)", 22) + ui.Dim.Render("各渠道号池健康状态、冷却与并发水位"), Value: "pool"},
+			{Label: ui.Pad("快捷全量生图 (image)", 22) + ui.Dim.Render("最新 gpt-image 批量生图与图像编辑"), Value: "image"},
+			{Label: ui.Pad("工具接入状态 (status)", 22) + ui.Dim.Render("查看本机所有 Harness 安装与模型配置"), Value: "status"},
+			{Label: ui.Pad("更换 API Key (key)", 22) + ui.Dim.Render("重新设置当前生效的 Crosery API Key"), Value: "key"},
+			{Label: ui.Pad("系统环境诊断 (doctor)", 22) + ui.Dim.Render("网络、终端编码与配置合法性检查"), Value: "doctor"},
+			{Label: ui.Pad("退出 (quit)", 22) + ui.Dim.Render("退出 crapi 控制台"), Value: "quit"},
 		})
 		if err != nil || choice == "quit" {
+			ui.ClearScreen()
 			return nil
 		}
+
 		var runErr error
+		pauseAfter := false
+
 		switch choice {
 		case "use":
 			runErr = cmdUse(a, nil)
 		case "reload":
 			runErr = cmdReload(a, nil)
-		case "usage":
-			runErr = cmdUsage(a, nil)
-		case "pool":
-			runErr = cmdPool(a, nil)
+			pauseAfter = true
 		case "update":
 			runErr = cmdUpdate(a, nil)
+			pauseAfter = true
 		case "setup":
 			runErr = cmdSetup(a, nil)
-		case "models":
-			runErr = cmdModels(a, nil)
-		case "channels":
-			runErr = cmdChannels(a, nil)
+			pauseAfter = true
+		case "usage":
+			runErr = cmdUsage(a, nil)
+			pauseAfter = true
+		case "pool":
+			runErr = cmdPool(a, nil)
+			pauseAfter = true
 		case "image":
 			runErr = cmdImage(a, nil)
+			pauseAfter = true
 		case "status":
 			runErr = cmdStatus(a, nil)
+			pauseAfter = true
 		case "key":
 			runErr = cmdKey(a, []string{"set"})
 		case "doctor":
 			runErr = cmdDoctor(a, nil)
+			pauseAfter = true
 		}
+
 		if runErr != nil && !errors.Is(runErr, ui.ErrAborted) {
 			ui.Fail("%v", runErr)
+			pauseAfter = true
+		}
+
+		if pauseAfter {
+			ui.Println()
+			ui.Note("按回车键返回主菜单...")
+			_, _ = bufio.NewReader(os.Stdin).ReadBytes('\n')
 		}
 	}
 }

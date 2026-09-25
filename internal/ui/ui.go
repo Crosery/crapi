@@ -84,6 +84,13 @@ func Println(a ...any) { _, _ = fmt.Fprintln(Out, a...) }
 // Printf 同上，带格式化。
 func Printf(format string, a ...any) { _, _ = fmt.Fprintf(Out, format, a...) }
 
+// ClearScreen 清除当前终端屏幕并把光标重置到左上角，保持控制台单屏显示。
+func ClearScreen() {
+	if term.Interactive() {
+		fmt.Print("\033[2J\033[H")
+	}
+}
+
 // Banner 打印品牌头。
 func Banner(version, baseURL string) {
 	g := G()
