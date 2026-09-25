@@ -15,12 +15,12 @@ import (
 const useHelp = `crapi use [harness] [model-id] [参数]
 
 快速查看与切换已接入 agent harness 的默认模型。
-不带参数时进入交互式界面：先浏览各工具当前使用的默认模型，选择目标工具后快速切换。
+不带参数时进入交互式界面：动态浏览各工具当前使用的默认模型，支持选择工具、切换模型并可随时返回上一级。
 
 别名：crapi switch, crapi set-model
 
 示例：
-  crapi use                               进入交互式选择菜单（先选工具看当前模型，再选新模型）
+  crapi use                               进入交互式选择菜单（先选工具看当前模型，支持随时返回）
   crapi use claude                        为 Claude Code 交互式选择并切换模型
   crapi use claude claude-opus-5-5        直接把 Claude Code 切换为 claude-opus-5-5
   crapi use claude-opus-5-5               一键把全部已接入的工具统一切换为 claude-opus-5-5
@@ -56,7 +56,7 @@ func cmdUse(a *App, args []string) error {
 
 	env := harness.DefaultEnv()
 
-	// 找出本机所有已接入或已配置的 harness
+	// 动态实时获取本机所有已接入或已配置的 harness 及其最新状态
 	getConfigured := func() []harness.Harness {
 		var list []harness.Harness
 		for _, h := range harness.All() {
@@ -75,7 +75,7 @@ func cmdUse(a *App, args []string) error {
 		return nil
 	}
 
-	// 解析命令行参数：支持 crapi use <harness> <model> 或 crapi use <model>
+	// 解析命令行直接传入的参数：支持 crapi use <harness> <model> 或 crapi use <model>
 	var targetHarness harness.Harness
 	targetModel := ""
 
@@ -126,7 +126,7 @@ func cmdUse(a *App, args []string) error {
 		return errors.New("缺少目标模型名称，例如：crapi use claude-opus-5-5")
 	}
 
-	// 交互式循环（支持连续切换与查看）
+	// 交互式主循环：动态刷新，随时支持返回上一级
 	for {
 		var selectedHarnesses []harness.Harness
 		currentModelOfTarget := ""
@@ -135,7 +135,7 @@ func cmdUse(a *App, args []string) error {
 			selectedHarnesses = []harness.Harness{targetHarness}
 			currentModelOfTarget = targetHarness.Status(env, a.Cfg.Base()).Model
 		} else if targetModel == "" {
-			// 第一步：先展示每个 harness 当前使用的模型，供用户选择
+			// 第一级：展示每个 harness 当前使用的模型（动态读取最新配置）
 			configured = getConfigured()
 			var scopeOpts []ui.Option
 			scopeOpts = append(scopeOpts, ui.Option{
@@ -156,10 +156,15 @@ func cmdUse(a *App, args []string) error {
 				})
 			}
 
+			scopeOpts = append(scopeOpts, ui.Option{
+				Label: ui.Dim.Render("← 返回上一级 / 退出"),
+				Value: "__EXIT__",
+			})
+
 			ui.Println()
 			pickHarness, err := ui.AskSelect("请选择要查看与切换模型的 Agent Harness：", "ALL", scopeOpts)
-			if err != nil {
-				return err
+			if err != nil || pickHarness == "__EXIT__" {
+				return nil
 			}
 
 			if pickHarness == "ALL" {
@@ -173,7 +178,7 @@ func cmdUse(a *App, args []string) error {
 			selectedHarnesses = configured
 		}
 
-		// 第二步：选择目标模型
+		// 第二级：选择目标模型（支持「返回上一级」）
 		chosenModel := targetModel
 		if chosenModel == "" {
 			var err error
@@ -185,9 +190,16 @@ func cmdUse(a *App, args []string) error {
 			if err != nil {
 				return err
 			}
+
+			// 如果用户选择了返回上一级，重置当前目标 harness，回到第一级菜单
+			if chosenModel == "__BACK__" {
+				targetHarness = nil
+				targetModel = ""
+				continue
+			}
 		}
 
-		// 第三步：执行配置写入
+		// 第三级：执行配置写入
 		ui.Println()
 		ui.Section("切换默认模型", fmt.Sprintf("目标：%s · 影响 %d 个工具", ui.AccentS.Render(chosenModel), len(selectedHarnesses)))
 		plan := harness.Plan{
@@ -213,19 +225,19 @@ func cmdUse(a *App, args []string) error {
 		ui.Success("默认模型已切换为 %s（已更新 %d / %d 个工具配置）。",
 			ui.AccentS.Render(chosenModel), ok, len(selectedHarnesses))
 
-		// 如果是通过命令行带参运行的，执行一次后退出
+		// 如果是通过命令行指定参数运行的，执行完毕后直接退出
 		if len(positional) > 0 || *harnessFlag != "" || !term.Interactive() {
 			return nil
 		}
 
-		// 交互模式下询问是否继续
+		// 交互模式下：清空当前选定工具，自动返回工具列表，方便继续查看与切换
 		targetHarness = nil
 		targetModel = ""
-		continueChoice, err := ui.AskSelect("还要切换其他 Agent Harness 吗？", "no", []ui.Option{
-			{Label: "继续切换其他 harness", Value: "yes"},
-			{Label: "完成并退出", Value: "no"},
+		continueChoice, err := ui.AskSelect("后续操作：", "continue", []ui.Option{
+			{Label: "继续查看 / 切换其他 Agent Harness", Value: "continue"},
+			{Label: "完成并退出", Value: "exit"},
 		})
-		if err != nil || continueChoice != "yes" {
+		if err != nil || continueChoice == "exit" {
 			break
 		}
 	}
@@ -233,8 +245,16 @@ func cmdUse(a *App, args []string) error {
 	return nil
 }
 
-// promptSelectModelForHarness 呈现带有当前模型标记的交互式选择菜单。
+// promptSelectModelForHarness 呈现带有「返回上一级」和当前模型高亮标记的选择菜单。
 func promptSelectModelForHarness(harnessName, currentModel string, chat []api.Model) (string, error) {
+	var opts []ui.Option
+
+	// 顶部固定提供「返回上一级」选项
+	opts = append(opts, ui.Option{
+		Label: ui.Dim.Render("← 返回上一级（重新选择工具）"),
+		Value: "__BACK__",
+	})
+
 	// 常用主流模型置顶推荐
 	recommended := []string{
 		"claude-opus-5-5",
@@ -254,26 +274,28 @@ func promptSelectModelForHarness(harnessName, currentModel string, chat []api.Mo
 		recSet[id] = true
 	}
 
-	var opts []ui.Option
-
 	formatOpt := func(m api.Model) ui.Option {
 		ctxStr := ""
 		if m.ContextLength > 0 {
 			ctxStr = fmt.Sprintf(" (%s ctx)", ui.Ctx(m.ContextLength))
 		}
 		statusTag := ""
-		if currentModel != "" && m.ID == currentModel {
+		if currentModel != "" && (m.ID == currentModel || strings.HasSuffix(currentModel, "/"+m.ID)) {
 			statusTag = " " + ui.OKS.Render("[当前使用]")
 		}
 		label := ui.Pad(m.ID, 28) + " " + ui.Dim.Render(m.OwnedBy+ctxStr) + statusTag
 		return ui.Option{Label: label, Value: m.ID}
 	}
 
-	// 1. 如果当前正在使用的模型不在推荐列表中，且属于可用模型，优先放到最前面
+	// 1. 如果当前正在使用的模型不在推荐列表中，且属于可用模型，优先放到最前面展示
 	if currentModel != "" && !recSet[currentModel] {
-		if m, ok := api.Find(chat, currentModel); ok {
+		rawID := currentModel
+		if idx := strings.LastIndex(rawID, "/"); idx >= 0 {
+			rawID = rawID[idx+1:]
+		}
+		if m, ok := api.Find(chat, rawID); ok {
 			opts = append(opts, formatOpt(m))
-			recSet[currentModel] = true
+			recSet[rawID] = true
 		}
 	}
 
@@ -284,7 +306,7 @@ func promptSelectModelForHarness(harnessName, currentModel string, chat []api.Mo
 		}
 	}
 
-	// 3. 其余模型按名称升序追加
+	// 3. 其余可用模型按名称字母序追加
 	var others []api.Model
 	for _, m := range chat {
 		if !recSet[m.ID] {
@@ -299,13 +321,13 @@ func promptSelectModelForHarness(harnessName, currentModel string, chat []api.Mo
 		opts = append(opts, formatOpt(m))
 	}
 
-	title := fmt.Sprintf("为 [%s] 选择新的默认模型：", harnessName)
+	title := fmt.Sprintf("【%s】请选择要切换的默认主流模型：", harnessName)
 	if currentModel != "" {
-		title = fmt.Sprintf("为 [%s] 选择新的默认模型 (当前: %s)：", harnessName, currentModel)
+		title = fmt.Sprintf("【%s】请选择要切换的默认主流模型（当前: %s）：", harnessName, currentModel)
 	}
 
 	ui.Println()
-	choice, err := ui.AskSelect(title, currentModel, opts)
+	choice, err := ui.AskSelect(title, "", opts)
 	if err != nil {
 		return "", err
 	}
