@@ -45,6 +45,8 @@ func cmdHome(a *App) error {
 	for {
 		ui.Println()
 		choice, err := ui.AskSelect("要做什么？", "", []ui.Option{
+			{Label: "切换默认主流模型", Value: "use"},
+			{Label: "智能重新初始化（适配新安装的 CLI）", Value: "reload"},
 			{Label: "查看用量与额度", Value: "usage"},
 			{Label: "查看号池状态", Value: "pool"},
 			{Label: "同步最新模型到所有 harness", Value: "update"},
@@ -62,6 +64,10 @@ func cmdHome(a *App) error {
 		}
 		var runErr error
 		switch choice {
+		case "use":
+			runErr = cmdUse(a, nil)
+		case "reload":
+			runErr = cmdReload(a, nil)
 		case "usage":
 			runErr = cmdUsage(a, nil)
 		case "pool":

@@ -1,7 +1,7 @@
 # crapi 🐣
 
-> **小鸡云 CPA 网关一站式 Agent Harness 配置与管理工具**  
-> 一行命令将 [小鸡云 CPA](https://ai.crosery.com/) 的上游模型与 API Key 自动注入本机所有主流 AI 编程代理环境，提供模型热更新、用量与号池监控、全量生图等功能。
+> **crosery渠道模型一键接入与管理工具**  
+> 一行命令将 [crosery](https://ai.crosery.com/) 的上游模型与 API Key 自动注入本机所有主流 AI 编程代理环境，提供模型热更新、用量与号池监控、全量生图等功能。
 
 [![Go Version](https://img.shields.io/badge/Go-1.26-blue.svg)](https://golang.org)
 [![Platform](https://img.shields.io/badge/Platform-macOS%20|%20Linux%20|%20Windows-green.svg)](#一键安装)
@@ -79,13 +79,18 @@
 
 ### 1. macOS & Linux
 
-#### 国内高速安装（推荐）
+#### 全球 CDN 高速安装（国内推荐，免代理）
 ```bash
 # 交互式引导安装
-curl -fsSL https://ghfast.top/https://raw.githubusercontent.com/crosery/crapi/main/install.sh | sh
+curl -fsSL https://cdn.jsdelivr.net/gh/crosery/crapi/install.sh | sh
 
 # 带 Key 免交互全自动安装（适合脚本与无头环境）
-curl -fsSL https://ghfast.top/https://raw.githubusercontent.com/crosery/crapi/main/install.sh | sh -s -- --key sk-your-key-here
+curl -fsSL https://cdn.jsdelivr.net/gh/crosery/crapi/install.sh | sh -s -- --key sk-your-key-here
+```
+
+#### GitHub 加速镜像备用
+```bash
+curl -fsSL https://ghfast.top/https://raw.githubusercontent.com/crosery/crapi/main/install.sh | sh
 ```
 
 #### 海外 / 全局代理环境
@@ -99,13 +104,18 @@ curl -fsSL https://raw.githubusercontent.com/crosery/crapi/main/install.sh | sh
 
 以普通用户权限打开 PowerShell 窗口：
 
-#### 国内高速安装（推荐）
+#### 全球 CDN 高速安装（国内推荐，免代理）
 ```powershell
 # 交互式引导安装
-irm https://ghfast.top/https://raw.githubusercontent.com/crosery/crapi/main/install.ps1 | iex
+irm https://cdn.jsdelivr.net/gh/crosery/crapi/install.ps1 | iex
 
 # 带 Key 免交互全自动安装
-$env:CRAPI_KEY='sk-your-key-here'; irm https://ghfast.top/https://raw.githubusercontent.com/crosery/crapi/main/install.ps1 | iex
+$env:CRAPI_KEY='sk-your-key-here'; irm https://cdn.jsdelivr.net/gh/crosery/crapi/install.ps1 | iex
+```
+
+#### GitHub 加速镜像备用
+```powershell
+irm https://ghfast.top/https://raw.githubusercontent.com/crosery/crapi/main/install.ps1 | iex
 ```
 
 #### 海外 / 全局代理环境
@@ -118,7 +128,7 @@ irm https://raw.githubusercontent.com/crosery/crapi/main/install.ps1 | iex
 ### 3. Windows (传统命令提示符 cmd.exe)
 
 ```cmd
-powershell -ExecutionPolicy Bypass -c "irm https://ghfast.top/https://raw.githubusercontent.com/crosery/crapi/main/install.ps1 | iex"
+powershell -ExecutionPolicy Bypass -c "irm https://cdn.jsdelivr.net/gh/crosery/crapi/install.ps1 | iex"
 ```
 
 > **Windows 环境变量说明**：安装脚本会自动将 `crapi.exe` 所在目录注册到 Windows 用户注册表 `HKCU\Environment\Path`，并即时向系统广播环境刷新消息，通常在当前会话或新开窗口中即可直接键入 `crapi`。

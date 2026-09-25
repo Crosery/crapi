@@ -23,7 +23,7 @@ import (
 
 const statusHelp = `crapi status [--json]
 
-列出 crapi 支持的全部 harness：是否已安装、是否已接入小鸡云、当前默认模型。`
+列出 crapi 支持的全部 harness：是否已安装、是否已接入 crosery、当前默认模型。`
 
 func cmdStatus(a *App, args []string) error {
 	fs := newFlags("status", statusHelp)

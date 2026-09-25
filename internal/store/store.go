@@ -28,12 +28,13 @@ type Managed struct {
 
 // Config 是 crapi 的持久化配置。
 type Config struct {
-	APIKey     string             `json:"apiKey,omitempty"`
-	BaseURL    string             `json:"baseUrl,omitempty"`
-	ConsoleURL string             `json:"consoleUrl,omitempty"`
-	Managed    map[string]Managed `json:"managed,omitempty"`
-	LastUpdate time.Time          `json:"lastUpdate,omitzero"`
-	ModelIDs   []string           `json:"modelIds,omitempty"` // 上次同步时的模型列表，用于 update 对比增减
+	APIKey       string             `json:"apiKey,omitempty"`
+	BaseURL      string             `json:"baseUrl,omitempty"`
+	ConsoleURL   string             `json:"consoleUrl,omitempty"`
+	DefaultModel string             `json:"defaultModel,omitempty"`
+	Managed      map[string]Managed `json:"managed,omitempty"`
+	LastUpdate   time.Time          `json:"lastUpdate,omitzero"`
+	ModelIDs     []string           `json:"modelIds,omitempty"` // 上次同步时的模型列表，用于 update 对比增减
 }
 
 // Dir 返回 crapi 的配置目录。

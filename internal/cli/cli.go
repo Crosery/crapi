@@ -37,6 +37,8 @@ type command struct {
 func commands() []command {
 	return []command{
 		{"setup", []string{"init", "config"}, "输入 API Key，一键配置本机所有 agent harness", cmdSetup},
+		{"use", []string{"switch", "set-model"}, "快速切换已接入 harness 的默认主流模型", cmdUse},
+		{"reload", []string{"reinit", "refresh"}, "智能重新初始化：自动为新安装的 agent CLI 完成接入并刷新", cmdReload},
 		{"update", []string{"sync", "up"}, "从网关同步最新模型与渠道，刷新所有已接入的 harness", cmdUpdate},
 		{"models", []string{"model", "ls"}, "查看当前 Key 可用的模型（按渠道分组）", cmdModels},
 		{"channels", []string{"channel"}, "查看当前 Key 可用的渠道", cmdChannels},

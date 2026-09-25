@@ -84,7 +84,7 @@ func cmdSetup(a *App, args []string) error {
 	}
 	ui.Println()
 	failed := len(selected) - ok - manual
-	msg := fmt.Sprintf("完成：%d 个 harness 已自动接入小鸡云", ok)
+	msg := fmt.Sprintf("完成：%d 个 harness 已自动接入 crosery", ok)
 	if manual > 0 {
 		msg += fmt.Sprintf("，%d 个需按上方提示在应用内完成最后一步", manual)
 	}
@@ -123,7 +123,7 @@ func (a *App) ensureKey(flagKey string, allowPrompt bool) (*api.Client, []api.Mo
 			if !allowPrompt || !term.Interactive() {
 				return nil, nil, errors.New("缺少 API Key：请用 --key sk-xxx 或环境变量 CRAPI_KEY 提供")
 			}
-			v, err := ui.AskSecret("请输入小鸡云 API Key", "Key 只保存在本机（"+store.Path()+"）", func(s string) error {
+			v, err := ui.AskSecret("请输入 crosery API Key", "Key 只保存在本机（"+store.Path()+"）", func(s string) error {
 				if len(strings.TrimSpace(s)) < 8 {
 					return errors.New("Key 太短了，请检查是否复制完整")
 				}
@@ -238,7 +238,7 @@ func chooseHarnesses(env harness.Env, base string, targets []string, all, yes bo
 		opts = append(opts, ui.Option{Label: label, Value: r.h.ID(), Selected: r.det.Installed})
 	}
 	ui.Println()
-	picked, err := ui.AskMulti("选择要接入小鸡云的 agent harness",
+	picked, err := ui.AskMulti("选择要接入 crosery 的 agent harness",
 		fmt.Sprintf("已为你勾选检测到的 %d 个。空格勾选 / 取消，回车确认。", installed), opts)
 	if err != nil {
 		return nil, err

@@ -36,10 +36,10 @@ var (
 // Glyphs 是一套可整体替换的字形；旧版 conhost 使用 ASCII 版本。
 type Glyphs struct {
 	OK, Fail, Warn, Info, Arrow, Dot, Bullet, Mark, Sep string
-	BarFull, BarEmpty                              string
-	BarParts                                       []string // 由细到粗的部分块，ASCII 模式为空
-	Border                                         lipgloss.Border
-	Rule                                           string
+	BarFull, BarEmpty                                   string
+	BarParts                                            []string // 由细到粗的部分块，ASCII 模式为空
+	Border                                              lipgloss.Border
+	Rule                                                string
 }
 
 var unicodeGlyphs = Glyphs{
@@ -87,7 +87,7 @@ func Printf(format string, a ...any) { _, _ = fmt.Fprintf(Out, format, a...) }
 // Banner 打印品牌头。
 func Banner(version, baseURL string) {
 	g := G()
-	title := BrandS.Render(g.Mark+" crapi") + "  " + Bold.Render("小鸡云 CPA 一键接入") + "  " + Dim.Render(version)
+	title := BrandS.Render(g.Mark+" crapi") + "  " + Bold.Render("crosery渠道模型一键接入") + "  " + Dim.Render(version)
 	sub := Dim.Render(baseURL)
 	box := lipgloss.NewStyle().
 		Border(g.Border).

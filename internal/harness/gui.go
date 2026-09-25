@@ -168,7 +168,7 @@ func (cherry) Status(Env, string) Status {
 func (cherry) Apply(e Env, p Plan, w *Writer) (Result, error) {
 	// 处理函数会删掉括号、把单引号换成双引号，所以名称里不能带这些字符。
 	payload, _ := json.Marshal(map[string]string{
-		"id": ProviderID, "name": "小鸡云 Crosery", "type": "openai",
+		"id": ProviderID, "name": "Crosery", "type": "openai",
 		"apiKey": p.Key, "baseUrl": strings.TrimRight(p.BaseURL, "/"),
 	})
 	link := "cherrystudio://providers/api-keys?v=1&data=" + base64.RawURLEncoding.EncodeToString(payload)
@@ -181,7 +181,7 @@ func (cherry) Apply(e Env, p Plan, w *Writer) (Result, error) {
 		return res, err
 	}
 	res.Notes = []string{
-		"已唤起 Cherry Studio，请在弹窗里点「确认」导入「小鸡云 Crosery」",
+		"已唤起 Cherry Studio，请在弹窗里点「确认」导入「Crosery」",
 		"导入后在该服务商页面点「管理」，从网关拉取模型列表并勾选需要的模型",
 	}
 	return res, nil
