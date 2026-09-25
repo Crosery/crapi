@@ -29,6 +29,17 @@ if command -v gh >/dev/null 2>&1; then
   gh release create "v$VERSION" dist/* --title "Release v$VERSION" --notes "Release v$VERSION with Qiniu CDN and multi-mirror sync" 2>/dev/null || true
 fi
 
+echo "6. 刷新 jsDelivr 历史旧缓存（防止第三方镜像污染）..."
+for u in \
+  "https://purge.jsdelivr.net/gh/crosery/crapi/install.ps1" \
+  "https://purge.jsdelivr.net/gh/crosery/crapi/install.sh" \
+  "https://purge.jsdelivr.net/gh/crosery/crapi@main/install.ps1" \
+  "https://purge.jsdelivr.net/gh/crosery/crapi@main/install.sh" \
+  "https://purge.jsdelivr.net/gh/crosery/crapi@latest/install.ps1" \
+  "https://purge.jsdelivr.net/gh/crosery/crapi@latest/install.sh"; do
+  curl -s "$u" >/dev/null 2>&1 || true
+done
+
 echo "同步完成！可通过以下直连高速链接验证："
 echo "  https://cdn.crosery.com/crapi/VERSION"
 echo "  https://cdn.crosery.com/crapi/install.sh"
