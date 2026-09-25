@@ -25,8 +25,31 @@
   try {
     try { [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor 3072 } catch {}
 
-    $base = 'https://github.com/crosery/crapi/releases/latest/download'
-    if ($env:CRAPI_DOWNLOAD_BASE) { $base = $env:CRAPI_DOWNLOAD_BASE.TrimEnd('/') }
+    $officialBase = 'https://github.com/crosery/crapi/releases/latest/download'
+    $candidates = @()
+    if ($env:CRAPI_DOWNLOAD_BASE) {
+      $candidates += $env:CRAPI_DOWNLOAD_BASE.TrimEnd('/')
+    } else {
+      $canDirect = $false
+      try {
+        $req = [System.Net.WebRequest]::Create('https://github.com')
+        $req.Timeout = 2000
+        $req.Method = 'HEAD'
+        $resp = $req.GetResponse()
+        $resp.Close()
+        $canDirect = $true
+      } catch {}
+
+      $m1 = "https://ghfast.top/$officialBase"
+      $m2 = "https://ghproxy.net/$officialBase"
+      $m3 = "https://gh-proxy.com/$officialBase"
+
+      if ($canDirect) {
+        $candidates = @($officialBase, $m1, $m2, $m3)
+      } else {
+        $candidates = @($m1, $m2, $m3, $officialBase)
+      }
+    }
 
     $arch = $env:PROCESSOR_ARCHITEW6432
     if (-not $arch) { $arch = $env:PROCESSOR_ARCHITECTURE }
@@ -47,16 +70,29 @@
     Write-Host ''
     Write-Host ('  crapi  ' + (M 'MSG{小鸡云 CPA 一键接入}')) -ForegroundColor Yellow
     Write-Host ''
-    Say ((M 'MSG{下载 }') + $asset)
-    try {
-      Invoke-WebRequest -UseBasicParsing -Uri "$base/$asset" -OutFile $tmp
-    } catch {
-      throw ((M 'MSG{下载失败，请检查网络，或设置 CRAPI_DOWNLOAD_BASE 使用镜像：}') + "$base/$asset")
+
+    $chosenBase = $null
+    foreach ($cand in $candidates) {
+      try {
+        if ($cand -eq $officialBase) {
+          Say ((M 'MSG{正在从官方源下载 }') + $asset + '...')
+        } else {
+          Say ((M 'MSG{正在通过国内加速节点下载 }') + $asset + '...')
+        }
+        Invoke-WebRequest -UseBasicParsing -Uri "$cand/$asset" -OutFile $tmp -TimeoutSec 30
+        $chosenBase = $cand
+        break
+      } catch {
+        Remove-Item $tmp -Force -ErrorAction SilentlyContinue
+      }
+    }
+    if (-not $chosenBase) {
+      throw (M 'MSG{下载失败，已尝试所有官方及镜像源。请检查网络连接。}')
     }
 
     $want = $null
     try {
-      $sums = (Invoke-WebRequest -UseBasicParsing -Uri "$base/SHA256SUMS").Content
+      $sums = (Invoke-WebRequest -UseBasicParsing -Uri "$chosenBase/SHA256SUMS" -TimeoutSec 15).Content
       if ($sums -is [byte[]]) { $sums = [Text.Encoding]::ASCII.GetString($sums) }
       foreach ($line in ($sums -split "`n")) {
         $p = $line.Trim() -split '\s+'

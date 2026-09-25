@@ -73,34 +73,52 @@
 
 ## 一键安装
 
-只需打开终端，执行对应平台的一行命令即可完成下载、校验与初始化：
+只需打开终端，执行对应平台的一行命令即可完成下载、校验与初始化。
 
-### macOS & Linux
+> 💡 **国内加速说明**：安装脚本内部内置了**智能测速与多节点容灾回退**机制（自动在官方源与国内高速节点间测速切换）。在国内无代理或网络受限环境下，推荐使用下方的**国内高速加速命令**；海外或已有全局代理环境使用默认命令即可。
 
+### 1. macOS & Linux
+
+#### 国内高速安装（推荐）
 ```bash
-# 交互式安装（安装后自动引导配置）
-curl -fsSL https://raw.githubusercontent.com/crosery/crapi/main/install.sh | sh
+# 交互式引导安装
+curl -fsSL https://ghfast.top/https://raw.githubusercontent.com/crosery/crapi/main/install.sh | sh
 
 # 带 Key 免交互全自动安装（适合脚本与无头环境）
-curl -fsSL https://raw.githubusercontent.com/crosery/crapi/main/install.sh | sh -s -- --key sk-your-key-here
+curl -fsSL https://ghfast.top/https://raw.githubusercontent.com/crosery/crapi/main/install.sh | sh -s -- --key sk-your-key-here
 ```
 
-### Windows (PowerShell 5.1+ / PowerShell 7+)
+#### 海外 / 全局代理环境
+```bash
+curl -fsSL https://raw.githubusercontent.com/crosery/crapi/main/install.sh | sh
+```
+
+---
+
+### 2. Windows (PowerShell 5.1+ / PowerShell 7+)
 
 以普通用户权限打开 PowerShell 窗口：
 
+#### 国内高速安装（推荐）
 ```powershell
-# 交互式安装
-irm https://raw.githubusercontent.com/crosery/crapi/main/install.ps1 | iex
+# 交互式引导安装
+irm https://ghfast.top/https://raw.githubusercontent.com/crosery/crapi/main/install.ps1 | iex
 
 # 带 Key 免交互全自动安装
-$env:CRAPI_KEY='sk-your-key-here'; irm https://raw.githubusercontent.com/crosery/crapi/main/install.ps1 | iex
+$env:CRAPI_KEY='sk-your-key-here'; irm https://ghfast.top/https://raw.githubusercontent.com/crosery/crapi/main/install.ps1 | iex
 ```
 
-### Windows (传统命令提示符 cmd.exe)
+#### 海外 / 全局代理环境
+```powershell
+irm https://raw.githubusercontent.com/crosery/crapi/main/install.ps1 | iex
+```
+
+---
+
+### 3. Windows (传统命令提示符 cmd.exe)
 
 ```cmd
-powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/crosery/crapi/main/install.ps1 | iex"
+powershell -ExecutionPolicy Bypass -c "irm https://ghfast.top/https://raw.githubusercontent.com/crosery/crapi/main/install.ps1 | iex"
 ```
 
 > **Windows 环境变量说明**：安装脚本会自动将 `crapi.exe` 所在目录注册到 Windows 用户注册表 `HKCU\Environment\Path`，并即时向系统广播环境刷新消息，通常在当前会话或新开窗口中即可直接键入 `crapi`。

@@ -1,21 +1,22 @@
 #!/bin/sh
-# crapi 一键安装（macOS / Linux）
-#   curl -fsSL https://crapi.crosery.com/install.sh | sh
-#   curl -fsSL https://crapi.crosery.com/install.sh | sh -s -- --key sk-xxx   # 带 Key 全自动
+# crapi 一键安装（macOS / Linux，内置国内外自动加速）
+#   curl -fsSL https://raw.githubusercontent.com/crosery/crapi/main/install.sh | sh
+#   # 国内加速单行命令：
+#   curl -fsSL https://ghfast.top/https://raw.githubusercontent.com/crosery/crapi/main/install.sh | sh
+#   # 带 Key 全自动：
+#   curl -fsSL https://ghfast.top/https://raw.githubusercontent.com/crosery/crapi/main/install.sh | sh -s -- --key sk-xxx
 # 可选环境变量：
 #   CRAPI_DOWNLOAD_BASE  发布产物下载地址（需包含 VERSION / SHA256SUMS / crapi-<os>-<arch>）
 #   CRAPI_INSTALL_DIR    安装目录，默认 ~/.local/bin
 #   CRAPI_NO_SETUP=1     只安装，不进入配置流程
 set -eu
 
-BASE="${CRAPI_DOWNLOAD_BASE:-https://github.com/crosery/crapi/releases/latest/download}"
-BASE="${BASE%/}"
 DIR="${CRAPI_INSTALL_DIR:-$HOME/.local/bin}"
 
 if [ -t 1 ]; then
-  Y="$(printf '\033[33m')"; G="$(printf '\033[32m')"; R="$(printf '\033[31m')"; D="$(printf '\033[2m')"; N="$(printf '\033[0m')"
+  Y="$(printf '\033[33m')"; G="$(printf '\033[32m')"; R="$(printf '\033[31m')"; N="$(printf '\033[0m')"
 else
-  Y=""; G=""; R=""; D=""; N=""
+  Y=""; G=""; R=""; N=""
 fi
 say()  { printf '%s◆%s %s\n' "$Y" "$N" "$1"; }
 ok()   { printf '%s✓%s %s\n' "$G" "$N" "$1"; }
@@ -24,7 +25,7 @@ die()  { printf '%s✗ %s%s\n' "$R" "$1" "$N" >&2; exit 1; }
 case "$(uname -s)" in
   Darwin) OS=darwin ;;
   Linux)  OS=linux ;;
-  MINGW*|MSYS*|CYGWIN*) die "Windows 请在 PowerShell 中运行：irm ${BASE%/releases/*}/install.ps1 | iex" ;;
+  MINGW*|MSYS*|CYGWIN*) die "Windows 请在 PowerShell 中运行：irm https://raw.githubusercontent.com/crosery/crapi/main/install.ps1 | iex" ;;
   *) die "暂不支持的系统：$(uname -s)" ;;
 esac
 case "$(uname -m)" in
@@ -33,25 +34,70 @@ case "$(uname -m)" in
   *) die "暂不支持的 CPU 架构：$(uname -m)" ;;
 esac
 
-fetch() { # fetch <url> <out>
+fetch() { # fetch <url> <out> [timeout_seconds]
+  url="$1"
+  out="$2"
+  timeout="${3:-20}"
   if command -v curl >/dev/null 2>&1; then
-    curl -fsSL --retry 2 --connect-timeout 15 -o "$2" "$1"
+    curl -fsSL --connect-timeout "$timeout" -o "$out" "$url"
   elif command -v wget >/dev/null 2>&1; then
-    wget -q -T 15 -O "$2" "$1"
+    wget -q -T "$timeout" -O "$out" "$url"
   else
     die "需要 curl 或 wget"
   fi
 }
+
+# 候选下载节点（官方源 + 国内高可用加速镜像）
+OFFICIAL_BASE="https://github.com/crosery/crapi/releases/latest/download"
+CANDIDATE_BASES=""
+
+if [ -n "${CRAPI_DOWNLOAD_BASE:-}" ]; then
+  CANDIDATE_BASES="${CRAPI_DOWNLOAD_BASE%/}"
+else
+  M1="https://ghfast.top/$OFFICIAL_BASE"
+  M2="https://ghproxy.net/$OFFICIAL_BASE"
+  M3="https://gh-proxy.com/$OFFICIAL_BASE"
+
+  # 快速连接探测（2 秒超时）判断是否直连通畅
+  CAN_DIRECT=0
+  if command -v curl >/dev/null 2>&1; then
+    curl -fsSL -I --connect-timeout 2 "https://github.com" >/dev/null 2>&1 && CAN_DIRECT=1 || true
+  elif command -v wget >/dev/null 2>&1; then
+    wget -q -T 2 --spider "https://github.com" >/dev/null 2>&1 && CAN_DIRECT=1 || true
+  fi
+
+  if [ "$CAN_DIRECT" = "1" ]; then
+    CANDIDATE_BASES="$OFFICIAL_BASE $M1 $M2 $M3"
+  else
+    CANDIDATE_BASES="$M1 $M2 $M3 $OFFICIAL_BASE"
+  fi
+fi
 
 ASSET="crapi-$OS-$ARCH"
 TMP="$(mktemp -d 2>/dev/null || mktemp -d -t crapi)"
 trap 'rm -rf "$TMP"' EXIT INT TERM
 
 printf '\n%s  crapi · 小鸡云 CPA 一键接入%s\n\n' "$Y" "$N"
-say "下载 $ASSET"
-fetch "$BASE/$ASSET" "$TMP/crapi" || die "下载失败：$BASE/$ASSET（检查网络，或设置 CRAPI_DOWNLOAD_BASE 使用镜像）"
 
-if fetch "$BASE/SHA256SUMS" "$TMP/SHA256SUMS" 2>/dev/null; then
+CHOSEN_BASE=""
+for base in $CANDIDATE_BASES; do
+  if [ "$base" = "$OFFICIAL_BASE" ]; then
+    say "正在从官方源下载 $ASSET..."
+  else
+    say "正在通过国内加速节点下载 $ASSET..."
+  fi
+  if fetch "$base/$ASSET" "$TMP/crapi" 25; then
+    CHOSEN_BASE="$base"
+    break
+  fi
+done
+
+if [ -z "$CHOSEN_BASE" ]; then
+  die "下载失败：已尝试所有官方及镜像源，请检查网络连接。"
+fi
+
+# 下载校验和进行安全校验
+if [ -n "$CHOSEN_BASE" ] && fetch "$CHOSEN_BASE/SHA256SUMS" "$TMP/SHA256SUMS" 10 2>/dev/null; then
   WANT="$(awk -v a="$ASSET" '$2==a || $2=="*"a {print $1}' "$TMP/SHA256SUMS")"
   if [ -n "$WANT" ]; then
     if command -v sha256sum >/dev/null 2>&1; then GOT="$(sha256sum "$TMP/crapi" | awk '{print $1}')"

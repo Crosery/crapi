@@ -25,8 +25,31 @@
   try {
     try { [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor 3072 } catch {}
 
-    $base = 'https://github.com/crosery/crapi/releases/latest/download'
-    if ($env:CRAPI_DOWNLOAD_BASE) { $base = $env:CRAPI_DOWNLOAD_BASE.TrimEnd('/') }
+    $officialBase = 'https://github.com/crosery/crapi/releases/latest/download'
+    $candidates = @()
+    if ($env:CRAPI_DOWNLOAD_BASE) {
+      $candidates += $env:CRAPI_DOWNLOAD_BASE.TrimEnd('/')
+    } else {
+      $canDirect = $false
+      try {
+        $req = [System.Net.WebRequest]::Create('https://github.com')
+        $req.Timeout = 2000
+        $req.Method = 'HEAD'
+        $resp = $req.GetResponse()
+        $resp.Close()
+        $canDirect = $true
+      } catch {}
+
+      $m1 = "https://ghfast.top/$officialBase"
+      $m2 = "https://ghproxy.net/$officialBase"
+      $m3 = "https://gh-proxy.com/$officialBase"
+
+      if ($canDirect) {
+        $candidates = @($officialBase, $m1, $m2, $m3)
+      } else {
+        $candidates = @($m1, $m2, $m3, $officialBase)
+      }
+    }
 
     $arch = $env:PROCESSOR_ARCHITEW6432
     if (-not $arch) { $arch = $env:PROCESSOR_ARCHITECTURE }
@@ -47,16 +70,29 @@
     Write-Host ''
     Write-Host ('  crapi  ' + (M '\u5c0f\u9e21\u4e91 CPA \u4e00\u952e\u63a5\u5165')) -ForegroundColor Yellow
     Write-Host ''
-    Say ((M '\u4e0b\u8f7d ') + $asset)
-    try {
-      Invoke-WebRequest -UseBasicParsing -Uri "$base/$asset" -OutFile $tmp
-    } catch {
-      throw ((M '\u4e0b\u8f7d\u5931\u8d25\uff0c\u8bf7\u68c0\u67e5\u7f51\u7edc\uff0c\u6216\u8bbe\u7f6e CRAPI_DOWNLOAD_BASE \u4f7f\u7528\u955c\u50cf\uff1a') + "$base/$asset")
+
+    $chosenBase = $null
+    foreach ($cand in $candidates) {
+      try {
+        if ($cand -eq $officialBase) {
+          Say ((M '\u6b63\u5728\u4ece\u5b98\u65b9\u6e90\u4e0b\u8f7d ') + $asset + '...')
+        } else {
+          Say ((M '\u6b63\u5728\u901a\u8fc7\u56fd\u5185\u52a0\u901f\u8282\u70b9\u4e0b\u8f7d ') + $asset + '...')
+        }
+        Invoke-WebRequest -UseBasicParsing -Uri "$cand/$asset" -OutFile $tmp -TimeoutSec 30
+        $chosenBase = $cand
+        break
+      } catch {
+        Remove-Item $tmp -Force -ErrorAction SilentlyContinue
+      }
+    }
+    if (-not $chosenBase) {
+      throw (M '\u4e0b\u8f7d\u5931\u8d25\uff0c\u5df2\u5c1d\u8bd5\u6240\u6709\u5b98\u65b9\u53ca\u955c\u50cf\u6e90\u3002\u8bf7\u68c0\u67e5\u7f51\u7edc\u8fde\u63a5\u3002')
     }
 
     $want = $null
     try {
-      $sums = (Invoke-WebRequest -UseBasicParsing -Uri "$base/SHA256SUMS").Content
+      $sums = (Invoke-WebRequest -UseBasicParsing -Uri "$chosenBase/SHA256SUMS" -TimeoutSec 15).Content
       if ($sums -is [byte[]]) { $sums = [Text.Encoding]::ASCII.GetString($sums) }
       foreach ($line in ($sums -split "`n")) {
         $p = $line.Trim() -split '\s+'
