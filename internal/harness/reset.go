@@ -27,8 +27,8 @@ func ResetHarness(e Env, h Harness, baseURL string) ([]string, error) {
 		if data, err := os.ReadFile(p); err == nil {
 			d := ParseTOML(data)
 			d.RemoveTablesWithPrefix("model_providers." + ProviderID)
-			prov, _ := d.GetTop("model_provider")
-			if UnquoteTOML(prov) == ProviderID || UnquoteTOML(prov) == "custom" {
+			// 只动 crapi 自己写的 provider；用户自建的（如 custom）原样保留。
+			if prov, _ := d.GetTop("model_provider"); UnquoteTOML(prov) == ProviderID {
 				d.SetTop("model_provider", TOMLString("openai"))
 			}
 			if err := os.WriteFile(p, d.Bytes(), 0o600); err == nil {
