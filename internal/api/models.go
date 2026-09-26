@@ -189,8 +189,34 @@ var (
 	PrefGemini = []string{"gemini-3.1-pro-preview", "gemini-3.8-flash", "gemini-3.1-pro-low", "gemini-3.5-flash-lite"}
 	PrefFast   = []string{"gpt-6-luna", "gpt-5.6-luna", "claude-haiku-4-5-20251001", "gemini-3.8-flash", "deepseek-v4.1-flash", "qcn-glm-5.3-flash"}
 	PrefAgent  = append(append(append([]string{}, PrefOpus[:2]...), PrefGPT[:3]...), PrefSonnet...)
-	PrefImage  = []string{"gpt-image-2.5", "gpt-image-2", "gpt-image-1.5", "gpt-image-1", "gpt-image", "gemini-3.1-flash-image"}
 )
+
+// 以下模型在网关层对所有 Key 开放，不以 /v1/models 是否列出为准（列表本身会抖动）。
+const (
+	// OpenHaiku 是 Claude Code 网络搜索等后台任务使用的 Haiku 档。
+	OpenHaiku = "claude-haiku-4-5-20251001"
+	// ImageFamily 是 crapi 唯一支持的生图系列，其他生图模型一律不用。
+	ImageFamily = "gpt-image-2.5"
+)
+
+// ImageModelIDs 是 gpt-image-2.5 系列的已知型号，第一个为默认。
+var ImageModelIDs = []string{"gpt-image-2.5", "gpt-image-2.5-flare", "gpt-image-2.5-sunburst"}
+
+// IsSupportedImageModel 报告 id 是否属于 gpt-image-2.5 系列。
+func IsSupportedImageModel(id string) bool {
+	return id == ImageFamily || strings.HasPrefix(id, ImageFamily+"-")
+}
+
+// SupportedImageModels 返回可用的生图型号：已知型号，加上网关新列出的同系列型号。
+func SupportedImageModels(all []Model) []string {
+	out := append([]string{}, ImageModelIDs...)
+	for _, m := range all {
+		if IsSupportedImageModel(m.ID) && !slices.Contains(out, m.ID) {
+			out = append(out, m.ID)
+		}
+	}
+	return out
+}
 
 // VendorIs 返回一个按厂商过滤的谓词。
 func VendorIs(v string) func(Model) bool {

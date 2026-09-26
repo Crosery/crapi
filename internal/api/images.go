@@ -35,26 +35,17 @@ type Image struct {
 
 const imageTimeout = 10 * time.Minute
 
-// usesImagesAPI：gpt-image / dall-e / grok-imagine 走 /v1/images/*，
-// Gemini 等多模态模型走 chat/completions 的图片输出。
-func usesImagesAPI(model string) bool {
-	m := strings.ToLower(model)
-	return strings.HasPrefix(m, "gpt-image") || strings.HasPrefix(m, "dall-e") || strings.Contains(m, "imagine")
-}
-
-// GenerateImages 按模型自动选择接口生成图片。
+// GenerateImages 只用 gpt-image-2.5 系列生图：无参考图走 /v1/images/generations，
+// 有参考图走 /v1/images/edits。其他模型直接拒绝，不做任何兜底。
 func (c *Client) GenerateImages(ctx context.Context, req ImageRequest) ([]Image, error) {
+	if !IsSupportedImageModel(req.Model) {
+		return nil, fmt.Errorf("crapi 只支持 %s 系列生图（%s），不支持 %s",
+			ImageFamily, strings.Join(ImageModelIDs, " / "), req.Model)
+	}
 	if req.N <= 0 {
 		req.N = 1
 	}
-	if usesImagesAPI(req.Model) {
-		imgs, err := c.imagesAPI(ctx, req)
-		var e *Error
-		if err == nil || !(errors.As(err, &e) && e.Status == 400 && strings.Contains(e.Message, "not supported on /v1/images")) {
-			return imgs, err
-		}
-	}
-	return c.chatImages(ctx, req)
+	return c.imagesAPI(ctx, req)
 }
 
 type imagesResponse struct {
@@ -142,89 +133,6 @@ func editForm(req ImageRequest) (*bytes.Buffer, string, error) {
 		return nil, "", err
 	}
 	return &buf, w.FormDataContentType(), nil
-}
-
-type chatImageResponse struct {
-	Choices []struct {
-		Message struct {
-			Content any `json:"content"`
-			Images  []struct {
-				ImageURL struct {
-					URL string `json:"url"`
-				} `json:"image_url"`
-			} `json:"images"`
-		} `json:"message"`
-	} `json:"choices"`
-}
-
-// chatImages 通过 chat/completions 的图片输出生图；每次请求取一张，按 N 循环。
-func (c *Client) chatImages(ctx context.Context, req ImageRequest) ([]Image, error) {
-	content := []map[string]any{{"type": "text", "text": req.Prompt}}
-	for _, p := range req.RefImages {
-		data, err := os.ReadFile(p)
-		if err != nil {
-			return nil, fmt.Errorf("读取参考图 %s 失败：%w", p, err)
-		}
-		url := "data:" + mimeOf(p, data) + ";base64," + base64.StdEncoding.EncodeToString(data)
-		content = append(content, map[string]any{"type": "image_url", "image_url": map[string]string{"url": url}})
-	}
-	payload := map[string]any{
-		"model":      req.Model,
-		"messages":   []map[string]any{{"role": "user", "content": content}},
-		"modalities": []string{"image", "text"},
-	}
-	if req.Size != "" {
-		payload["size"] = req.Size
-	}
-	var out []Image
-	for i := 0; i < req.N; i++ {
-		var resp chatImageResponse
-		if err := c.postJSON(ctx, c.BaseURL+"/v1/chat/completions", payload, imageTimeout, &resp); err != nil {
-			return out, err
-		}
-		for _, ch := range resp.Choices {
-			for _, im := range ch.Message.Images {
-				if img, ok := decodeDataURL(im.ImageURL.URL); ok {
-					out = append(out, img)
-				}
-			}
-			if parts, ok := ch.Message.Content.([]any); ok {
-				for _, part := range parts {
-					pm, _ := part.(map[string]any)
-					iu, _ := pm["image_url"].(map[string]any)
-					if u, _ := iu["url"].(string); u != "" {
-						if img, ok := decodeDataURL(u); ok {
-							out = append(out, img)
-						}
-					}
-				}
-			}
-		}
-	}
-	if len(out) == 0 {
-		return nil, errors.New("模型没有返回图片，可以换个描述或换个模型再试")
-	}
-	return out, nil
-}
-
-func decodeDataURL(u string) (Image, bool) {
-	if !strings.HasPrefix(u, "data:") {
-		return Image{}, false
-	}
-	comma := strings.IndexByte(u, ',')
-	if comma < 0 {
-		return Image{}, false
-	}
-	meta := u[5:comma]
-	raw, err := base64.StdEncoding.DecodeString(u[comma+1:])
-	if err != nil {
-		return Image{}, false
-	}
-	ext := "png"
-	if exts, _ := mime.ExtensionsByType(strings.TrimSuffix(meta, ";base64")); len(exts) > 0 {
-		ext = strings.TrimPrefix(exts[0], ".")
-	}
-	return Image{Data: raw, Ext: sniffExt(raw, ext)}, true
 }
 
 func sniffExt(data []byte, fallback string) string {

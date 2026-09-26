@@ -162,7 +162,7 @@ func newFlags(name, usage string) *flag.FlagSet {
 	return fs
 }
 
-// parse 允许 flag 与位置参数交错（crapi image "一只猫" -m gpt-image-2）。
+// parse 允许 flag 与位置参数交错（crapi image "一只猫" -m gpt-image-2.5-flare）。
 func parse(fs *flag.FlagSet, args []string, help string) ([]string, error) {
 	var flags, pos []string
 	for i := 0; i < len(args); i++ {

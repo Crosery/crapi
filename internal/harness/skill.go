@@ -8,7 +8,7 @@ import (
 // SkillContent 是内置的 crapi 技能定义内容。
 const SkillContent = `---
 name: crapi
-description: "通过 crapi 管理本机所有 Agent Harness（Claude Code, WorkBuddy, Codex, Pi, OpenCode, Kimi 等）的 Crosery CPA 网关配置、动态切换主流默认模型、重新初始化适配新安装的 CLI，以及通过 Crosery CPA 进行 gpt-image 批量生图与图像编辑。"
+description: "通过 crapi 管理本机所有 Agent Harness（Claude Code, WorkBuddy, Codex, Pi, OpenCode, Kimi 等）的 Crosery CPA 网关配置、动态切换主流默认模型、重新初始化适配新安装的 CLI，以及通过 Crosery CPA 用 gpt-image-2.5 系列批量生图与图像编辑。"
 ---
 
 # crapi
@@ -17,7 +17,7 @@ Crosery CPA 网关与多 Agent Harness 统一管理 CLI。可独立运行，也�
 
 ## 核心工作流
 
-### 1. 批量生图与图像编辑（默认使用最新 gpt-image 系列）
+### 1. 批量生图与图像编辑（只支持 gpt-image-2.5 系列）
 ` + "```bash" + `
 # 文本生图（返回标准 JSON 数组，包含图片绝对路径，方便后续工具读取）
 crapi image "赛博朋克风格未来科技城市，雨夜霓虹倒影" --json --outdir ./images -n 4 --variant landscape
@@ -27,7 +27,7 @@ crapi image "保持人物面貌与发型不变，将背景换成海边日落" -i
 ` + "```" + `
 - --variant：landscape (1536x1024), portrait (1024x1536), square (1024x1024)
 - -n, --count：1-8 张并发批量生成
-- 默认自动选用网关最新 gpt-image 系列模型
+- 只支持 gpt-image-2.5 / gpt-image-2.5-flare / gpt-image-2.5-sunburst（对所有 Key 开放），默认 gpt-image-2.5；其他生图模型会被拒绝
 
 ### 2. 动态切换主流默认模型
 ` + "```bash" + `

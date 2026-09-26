@@ -58,7 +58,7 @@ func cmdHome(a *App) error {
 			{Label: ui.Pad("批量配置工具 (setup)", 22) + ui.Dim.Render("一键批量配置本机全部 Agent Harness"), Value: "setup"},
 			{Label: ui.Pad("额度与用量 (usage)", 22) + ui.Dim.Render("今日/本周/总额度、Token 消耗与近况流水"), Value: "usage"},
 			{Label: ui.Pad("上游号池状态 (pool)", 22) + ui.Dim.Render("各渠道号池健康状态、冷却与并发水位"), Value: "pool"},
-			{Label: ui.Pad("快捷全量生图 (image)", 22) + ui.Dim.Render("最新 gpt-image 批量生图与图像编辑"), Value: "image"},
+			{Label: ui.Pad("快捷全量生图 (image)", 22) + ui.Dim.Render("gpt-image-2.5 批量生图与图像编辑"), Value: "image"},
 			{Label: ui.Pad("工具接入状态 (status)", 22) + ui.Dim.Render("查看本机所有 Harness 安装与模型配置"), Value: "status"},
 			{Label: ui.Pad("退回原本配置 (reset)", 22) + ui.Dim.Render("一键退出 Crosery 并恢复个人原本的账号与配置"), Value: "reset"},
 			{Label: ui.Pad("更换 API Key (key)", 22) + ui.Dim.Render("重新设置当前生效的 Crosery API Key"), Value: "key"},

@@ -68,17 +68,17 @@ func (c claudeCode) Apply(e Env, p Plan, w *Writer) (Result, error) {
 	opus := keepOr(p, env.Str("ANTHROPIC_DEFAULT_OPUS_MODEL"), api.PrefOpus, "opus")
 	sonnet := keepOr(p, env.Str("ANTHROPIC_DEFAULT_SONNET_MODEL"), api.PrefSonnet, "sonnet")
 	haiku := keepOr(p, env.Str("ANTHROPIC_DEFAULT_HAIKU_MODEL"), api.PrefHaiku, "haiku")
+	if haiku == "" {
+		// Haiku 档对所有 Key 开放，/v1/models 没列出（列表会抖动）也照常映射。
+		haiku = api.OpenHaiku
+	}
 	setIf(env, "ANTHROPIC_DEFAULT_OPUS_MODEL", opus)
 	setIf(env, "ANTHROPIC_DEFAULT_SONNET_MODEL", sonnet)
 	if p.WebSearch || env.Has("ANTHROPIC_DEFAULT_HAIKU_MODEL") {
-		if haiku == "" {
-			res.Notes = append(res.Notes, "当前 Key 没有 Claude Haiku 模型，Claude Code 的网络搜索将不可用")
-		} else {
-			env.Set("ANTHROPIC_DEFAULT_HAIKU_MODEL", haiku)
-			env.Set("ANTHROPIC_DEFAULT_HAIKU_MODEL_NAME", haiku)
-			// 旧版本（< 1.0.x）读取的是这个变量。
-			env.Set("ANTHROPIC_SMALL_FAST_MODEL", haiku)
-		}
+		env.Set("ANTHROPIC_DEFAULT_HAIKU_MODEL", haiku)
+		env.Set("ANTHROPIC_DEFAULT_HAIKU_MODEL_NAME", haiku)
+		// 旧版本（< 1.0.x）读取的是这个变量。
+		env.Set("ANTHROPIC_SMALL_FAST_MODEL", haiku)
 	}
 
 	model := s.Str("model")
@@ -101,7 +101,7 @@ func (c claudeCode) Apply(e Env, p Plan, w *Writer) (Result, error) {
 		s.Set("model", model)
 	}
 
-	if p.WebSearch && haiku != "" {
+	if p.WebSearch {
 		perms := s.Child("permissions")
 		allow := Strs(anyOr(perms, "allow"))
 		if !slices.Contains(allow, "WebSearch") {

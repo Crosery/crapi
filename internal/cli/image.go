@@ -19,25 +19,25 @@ import (
 
 const imageHelp = `crapi image "<描述>" [参数]
 
-使用 Crosery CPA 网关生图，默认优先选用最新的 gpt-image 系列模型，
-支持单张与批量并发生成，可附带参考图做图生图与编辑。
+使用 Crosery CPA 网关生图。只支持 gpt-image-2.5 系列（对所有 Key 开放），
+默认 gpt-image-2.5；支持单张与批量生成，可附带参考图做图生图与编辑。
 
 示例：
   crapi image "赛博朋克城市雨夜"
   crapi image "二次元水彩萌宠" -n 4 --variant landscape
-  crapi image "科幻飞船" --model gpt-image-2 -o ./output --json
+  crapi image "科幻飞船" --model gpt-image-2.5-flare -o ./output --json
 
 参数：
-  -m, --model <id>       生图模型（默认自动选用最新 gpt-image 系列；--list 查看全部）
+  -m, --model <id>       gpt-image-2.5 / gpt-image-2.5-flare / gpt-image-2.5-sunburst（默认 gpt-image-2.5）
   -n, --count <N>        生成张数（默认 1，支持 1-8 张批量生成）
   -s, --size <WxH>       显式尺寸，如 1024x1024 / 1536x1024 / 1024x1536
   --variant <版式>       快速画幅：landscape (1536x1024) / portrait (1024x1536) / square (1024x1024)
-  -q, --quality <档>     画面质量：low / medium / high / auto（gpt-image 系列）
+  -q, --quality <档>     画面质量：low / medium / high / auto
   -i, --image <文件>     参考图路径（可重复指定多张）
   -o, --out, --outdir <目录>  图片保存目录（默认当前目录）
   --json                 以标准 JSON 数组输出结果路径，便于脚本与 crosery-ct 调用
   --open                 生成后自动用系统查看器打开图片
-  --list                 列出当前 Key 可用的生图模型`
+  --list                 列出支持的生图型号`
 
 func cmdImage(a *App, args []string) error {
 	fs := newFlags("image", imageHelp)
@@ -76,31 +76,36 @@ func cmdImage(a *App, args []string) error {
 		return err
 	}
 
-	models, err := a.fetchModels(c)
-	if err != nil {
-		return err
-	}
-	imgModels := api.ImageModels(models)
-	if len(imgModels) == 0 {
-		return errors.New("当前 Key 没有可用的生图模型")
+	// gpt-image-2.5 系列对所有 Key 开放，生图不依赖 /v1/models 是否列出；
+	// 只有列表 / 交互选择时才读一次网关目录，用来发现新的同系列型号与价格。
+	imageIDs := api.ImageModelIDs
+	var listed []api.Model
+	if *list || (*model == "" && len(pos) == 0 && term.Interactive() && !*asJSON) {
+		if ms, err := a.fetchModels(c); err == nil {
+			listed = ms
+			imageIDs = api.SupportedImageModels(ms)
+		}
 	}
 
 	if *list {
 		if *asJSON {
-			data, _ := json.MarshalIndent(imgModels, "", "  ")
+			data, _ := json.MarshalIndent(imageIDs, "", "  ")
 			fmt.Println(string(data))
 			return nil
 		}
-		ui.Section("生图模型", fmt.Sprintf("%d 个", len(imgModels)))
+		ui.Section("生图型号", fmt.Sprintf("%s 系列 · %d 个 · 对所有 Key 开放", api.ImageFamily, len(imageIDs)))
 		var rows [][]string
-		for _, m := range imgModels {
-			via := "chat/completions"
-			if strings.HasPrefix(m.ID, "gpt-image") || strings.Contains(m.ID, "imagine") {
-				via = "images/generations"
+		for i, id := range imageIDs {
+			name, cost := "", ui.Dim.Render("-")
+			if m, ok := api.Find(listed, id); ok {
+				name, cost = m.Name(), price(m)
 			}
-			rows = append(rows, []string{m.ID, ui.Truncate(m.Name(), 28), api.ChannelLabel(m.OwnedBy), via, price(m)})
+			if i == 0 {
+				name += ui.OKS.Render(" 默认")
+			}
+			rows = append(rows, []string{id, name, cost})
 		}
-		ui.Println(indent(ui.Table([]string{"模型 ID", "名称", "渠道", "接口", "价格 $/M"}, rows), "  "))
+		ui.Println(indent(ui.Table([]string{"模型 ID", "名称", "价格 $/M"}, rows), "  "))
 		return nil
 	}
 
@@ -146,19 +151,19 @@ func cmdImage(a *App, args []string) error {
 	}
 
 	if *model == "" {
-		// 优先选择最新的 gpt-image 系列
-		*model = api.Pick(imgModels, api.PrefImage, nil)
+		*model = imageIDs[0]
 		if term.Interactive() && len(pos) == 0 && !*asJSON {
 			var opts []ui.Option
-			for _, m := range imgModels {
-				opts = append(opts, ui.Option{Label: ui.Pad(m.ID, 26) + ui.Dim.Render(api.ChannelLabel(m.OwnedBy)), Value: m.ID, Selected: m.ID == *model})
+			for _, id := range imageIDs {
+				opts = append(opts, ui.Option{Label: id, Value: id, Selected: id == *model})
 			}
-			if *model, err = ui.AskSelect("选择生图模型", "", opts); err != nil {
+			if *model, err = ui.AskSelect("选择生图型号", "", opts); err != nil {
 				return err
 			}
 		}
-	} else if _, ok := api.Find(models, *model); !ok {
-		return fmt.Errorf("当前 Key 看不到模型 %s，用 crapi image --list 查看可用生图模型", *model)
+	} else if !api.IsSupportedImageModel(*model) {
+		return fmt.Errorf("crapi 只支持 %s 系列生图（%s），不支持 %s",
+			api.ImageFamily, strings.Join(api.ImageModelIDs, " / "), *model)
 	}
 
 	for _, r := range refs {

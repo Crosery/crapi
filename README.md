@@ -4,7 +4,7 @@
 
 ### Crosery CPA 一键接入与管理工具
 
-<p>一行命令将 Crosery CPA 网关的上游模型与 API Key 自动注入本机所有主流 AI 编程代理环境，提供模型热更新、动态模型切换、用量与号池监控、全量生图等功能。</p>
+<p>一行命令将 Crosery CPA 网关的上游模型与 API Key 自动注入本机所有主流 AI 编程代理环境，提供模型热更新、动态模型切换、用量与号池监控、gpt-image-2.5 生图等功能。</p>
 
 <p>
   <a href="README.md"><b>中文</b></a>
@@ -53,7 +53,7 @@
 - **动态模型快速切换** — `crapi use` 提供可视化的状态看板，清晰查看各工具当前生效的模型，支持全局统一切换或单工具定制切换，支持随时返回上一级。
 - **智能重新初始化** — `crapi reload` 自动识别你后来新安装的 Agent CLI，自动补齐适配配置并刷新模型目录。
 - **模型增量热更新** — `crapi update` 自动拉取上游网关模型变动，清晰比对增减项，绝不冲掉用户已设定的偏好。
-- **全量生图与批量并发** — 默认优先选用最新 gpt-image 系列模型，支持 1-8 张并发批量生成、快速画幅版式（landscape/portrait/square）与 JSON 结构化输出。
+- **gpt-image-2.5 生图与批量并发** — 只支持 gpt-image-2.5 系列（对所有 Key 开放，默认 gpt-image-2.5），支持 1-8 张并发批量生成、快速画幅版式（landscape/portrait/square）与 JSON 结构化输出。
 - **与 crosery-ct 无缝联动** — 提供原生 crosery-ct 扩展支持，其他自动化脚本或私有 Agent 可直接通过 `crosery-ct call crosery_image_generate` 调用生图。
 - **严格零破坏与原子备份** — 每次修改前在 `~/.config/crapi/backups/` 留存时间戳备份，支持 `crapi restore` 随时一键回滚。
 - **单静态二进制与全平台原生** — 采用 Go 1.26 构建，零 CGO 依赖，支持 macOS (Apple Silicon / Intel)、Linux (amd64 / arm64) 以及 Windows (amd64 / arm64 / 386)。
@@ -200,12 +200,12 @@ crapi update
 
 ---
 
-### 5. 全量生图与批量并发 (image)
+### 5. gpt-image-2.5 生图与批量并发 (image)
 
-默认优先选用网关最新 gpt-image 系列模型，支持单张与批量并发生成：
+只支持 gpt-image-2.5 系列（gpt-image-2.5 / gpt-image-2.5-flare / gpt-image-2.5-sunburst），对所有 Key 开放，默认 gpt-image-2.5；其他生图模型一律不支持：
 
 ```bash
-# 文本生图（自动选用最新 gpt-image 系列）
+# 文本生图（默认 gpt-image-2.5）
 crapi image "赛博朋克风格未来科技城市，雨夜霓虹倒影"
 
 # 批量并发生成 4 张横版大图
@@ -214,7 +214,7 @@ crapi image "太空宇航员在火星日落下的剪影" -n 4 --variant landscap
 # 以标准 JSON 输出结果文件路径（供自动化脚本调用）
 crapi image "概念插画，科幻机甲" --json -o ./output
 
-# 带参考图做图生图或局部重绘
+# 带参考图做图生图 / 编辑
 crapi image "将背景更换为繁星满天的夜空" -i ./photo.png -o ./output
 ```
 
